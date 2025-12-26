@@ -112,6 +112,11 @@ class TFSAid(tk.Tk):
         btn_transactions.pack(fill='x', padx=10, pady=5)
         self.sidebar_buttons.append(btn_transactions)
 
+        btn_room_year = ttk.Button(self.sidebar_frame, text="Room by Year",
+                                      command=self.show_room_years_view)
+        btn_room_year.pack(fill='x', padx=10, pady=5)
+        self.sidebar_buttons.append(btn_room_year)
+
         btn_room_checking = ttk.Button(self.sidebar_frame, text="Room Checking")
         btn_room_checking.pack(fill='x', padx=10, pady=5)
         self.sidebar_buttons.append(btn_room_checking)
@@ -130,6 +135,11 @@ class TFSAid(tk.Tk):
         btn_new_transaction.pack(fill='x', padx=10, pady=5)
         self.sidebar_buttons.append(btn_new_transaction)
 
+        btn_new_room_year = ttk.Button(self.sidebar_frame, text="New Room/Year",
+                                       command=lambda: self.show_frame("NewRoomYearForm"))
+        btn_new_room_year.pack(fill='x', padx=10, pady=5)
+        self.sidebar_buttons.append(btn_new_room_year)
+
     def show_accounts_view(self):
         """Loads data into the Treeview and then raises the AccountsList frame."""
         if self.conn:
@@ -140,7 +150,13 @@ class TFSAid(tk.Tk):
         """Loads data into the Transactions Treeview and raises the frame."""
         if self.conn:
             self.load_transactions_list()
-        self.show_frame("TransactionsList")        
+        self.show_frame("TransactionsList")
+
+    def show_room_years_view(self):
+        """Loads data into the Room by Years Treeview and raises the frame."""
+        if self.conn:
+            self.load_room_year_list()
+        self.show_frame("RoomYearsList")
 
     def _setup_content_frames(self):
         """Creates all dynamic content frames and places them on top of each other."""
@@ -164,6 +180,16 @@ class TFSAid(tk.Tk):
         transactions_frame = tk.Frame(self.content_area, bg='white')
         self.frames["TransactionsList"] = transactions_frame
         self._create_transactions_list_view(transactions_frame)
+
+        # --- 4. Room Year List Frame ---
+        room_years_frame = tk.Frame(self.content_area, bg='white')
+        self.frames["RoomYearsList"] = room_years_frame
+        self._create_room_years_list_view(room_years_frame)
+
+        # --- 4. New Room Year Frame ---
+        room_form_frame = tk.Frame(self.content_area, bg='white', padx=20, pady=20, bd=1, relief="solid")
+        self.frames["NewRoomYearForm"] = room_form_frame
+        self._create_new_room_year_form(room_form_frame)
 
         # --- 5. Default No File Open Frame ---
         default_frame = tk.Frame(self.content_area, bg=CONTENT_COLOR)
@@ -405,7 +431,50 @@ class TFSAid(tk.Tk):
                 
         except sqlite3.Error as e:
             messagebox.showerror("Database Error", f"Could not load accounts: {e}")        
+
+    def _create_room_years_list_view(self, parent_frame):
+        """Creates the Treeview for Room by Years."""
         
+        columns = ("Year", "NewRoom")
+        self.room_years_tree = ttk.Treeview(parent_frame, columns=columns, show='headings')
+
+        self.room_years_tree.heading("Year", text="Year")
+        self.room_years_tree.column("Year", width=100, anchor='center')
+
+        self.room_years_tree.heading("NewRoom", text="New Room")
+        self.room_years_tree.column("NewRoom", width=100, anchor='center')
+
+        # Scrollbar
+        vsb = ttk.Scrollbar(parent_frame, orient="vertical", command=self.room_years_tree.yview)
+        self.room_years_tree.configure(yscrollcommand=vsb.set)
+
+        # Layout
+        parent_frame.grid_rowconfigure(0, weight=1)
+        parent_frame.grid_columnconfigure(0, weight=1)
+        self.room_years_tree.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
+        vsb.grid(row=0, column=1, sticky='ns', pady=10)
+
+    def _create_new_room_year_form(self, parent_frame):
+        """Creates the form to input New Room per Year data."""
+        parent_frame.grid_columnconfigure(1, weight=1)
+
+        ttk.Label(parent_frame, text="Add New Room Per Year",
+                font=('Arial', 16, 'bold')).grid(row=0, column=0, columnspan=2, pady=(0, 20))
+
+        # 1. Year Entry (User only types YYYY)
+        ttk.Label(parent_frame, text="Year (YYYY):").grid(row=1, column=0, sticky="w", pady=5)
+        self.entry_room_year = ttk.Entry(parent_frame)
+        self.entry_room_year.grid(row=1, column=1, sticky="ew", padx=10)
+
+        # 2. New Room Amount
+        ttk.Label(parent_frame, text="New Room Amount:").grid(row=2, column=0, sticky="w", pady=5)
+        self.entry_room_amount = ttk.Entry(parent_frame)
+        self.entry_room_amount.grid(row=2, column=1, sticky="ew", padx=10)
+
+        # Save Button
+        ttk.Button(parent_frame, text="Save Record",
+                command=self.save_new_room_year_data).grid(row=3, column=1, sticky="e", pady=20, padx=10)
+
     def _create_default_view(self, parent_frame):
         """Creates the content for when no database is open."""
         ttk.Label(parent_frame, text="Please create a new database file or open an existing one.", 
@@ -413,7 +482,7 @@ class TFSAid(tk.Tk):
                   foreground='#444').pack(pady=100, padx=20)
         ttk.Label(parent_frame, text="Use File -> New or File -> Open in the menu bar.", 
                   font=('Arial', 12), background=CONTENT_COLOR).pack(pady=10)
-                
+
     def show_frame(self, frame_name):
         """
         The critical function: Brings the requested frame to the top.
@@ -738,6 +807,94 @@ class TFSAid(tk.Tk):
 
         except sqlite3.Error as e:
             messagebox.showerror("Database Error", f"Failed to load transactions: {e}")
+
+    def save_new_room_year_data(self):
+        """Converts year to first day of year and saves to NewRoomPerYear table."""
+        if not self.conn:
+            return
+
+        year_input = self.entry_room_year.get().strip()
+        amount_input = self.entry_room_amount.get().strip()
+
+        # 1. Validation
+        if not year_input or not amount_input:
+            messagebox.showwarning("Input Error", "Both Year and Amount are required.")
+            return
+
+        if not (year_input.isdigit() and len(year_input) == 4):
+            messagebox.showwarning("Input Error", "Please enter a valid 4-digit year (e.g., 2025).")
+            return
+
+        # 2. Convert Year to First Day of Year
+        # Transformation: "2025" -> "2025-01-01"
+        year_first_day = f"{year_input}-01-01"
+
+        try:
+            amount = float(amount_input)
+            cursor = self.conn.cursor()
+
+            # 3. Check for existing entry (YearFirstDay is UNIQUE)
+            cursor.execute("SELECT id FROM NewRoomPerYear WHERE YearFirstDay = ?", (year_first_day,))
+            if cursor.fetchone():
+                messagebox.showwarning("Duplicate Error", f"A record for the year {year_input} already exists.")
+                return
+
+            # 4. Insert into Database
+            cursor.execute("""
+                INSERT INTO NewRoomPerYear (YearFirstDay, NewRoom)
+                VALUES (?, ?)
+            """, (year_first_day, amount))
+
+            self.conn.commit()
+            messagebox.showinfo("Success", f"Record for {year_input} saved successfully.")
+
+            # Clear form
+            self.entry_room_year.delete(0, tk.END)
+            self.entry_room_amount.delete(0, tk.END)
+
+        except ValueError:
+            messagebox.showerror("Input Error", "Please enter a valid number for the Amount.")
+        except sqlite3.Error as e:
+            messagebox.showerror("Database Error", f"An error occurred: {e}")
+
+    def load_room_year_list(self):
+            """
+            Fetches records from NewRoomPerYear and displays them in the Room Years Treeview.
+            """
+            if not self.conn:
+                return
+
+            # 1. Clear self.room_years_tree
+            for item in self.room_years_tree.get_children():
+                self.room_years_tree.delete(item)
+
+            # 2. SQL Query
+            sql = """
+            SELECT YearFirstDay, NewRoom 
+            FROM NewRoomPerYear 
+            ORDER BY YearFirstDay;
+            """
+
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute(sql)
+
+                # 3. Insert into self.room_years_tree
+                for row in cursor.fetchall():
+                    full_date, amount = row
+
+                    # OPTIONAL: Extract just the year for a cleaner UI
+                    # "2025-01-01" -> "2025"
+                    display_year = full_date.split('-')[0] if '-' in full_date else full_date
+
+                    self.room_years_tree.insert('', tk.END, values=(display_year, amount))
+
+                # 4. FIX: Check count of the correct tree
+                count = len(self.room_years_tree.get_children())
+                print(f"Loaded {count} years into the view.")
+
+            except sqlite3.Error as e:
+                messagebox.showerror("Database Error", f"Failed to retrieve room by years list: {e}")
 
 if __name__ == "__main__":
     root = TFSAid()

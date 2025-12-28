@@ -7,6 +7,7 @@ class MainWindowLayout:
     def __init__(self, root, controller):
         self.root = root
         self.controller = controller
+        self.sidebar_buttons = [] # Store buttons here to access them later
         self._setup_layout()
         self._setup_sidebar()
 
@@ -25,15 +26,26 @@ class MainWindowLayout:
     def _setup_sidebar(self):
         ttk.Label(self.sidebar_frame, text="Navigation", background=SIDEBAR_COLOR).pack(pady=20)
         
-        self.buttons = []
         nav_items = [
-            ("Accounts", lambda: self.controller.show_frame("AccountsListFrame")),
-            ("Transactions", lambda: self.controller.show_frame("TransactionsListFrame")),
-            ("New Account", lambda: self.controller.show_frame("NewAccountFrame")),
-            ("New Transaction", lambda: self.controller.show_frame("NewTransactionFrame")),
+            ("Accounts", "AccountsListFrame"),
+            ("Transactions", "TransactionsListFrame"),
+            ("New Account", "NewAccountFrame"),
+            ("New Transaction", "NewTransactionFrame"),
+            ("New Room/Year", "NewRoomYearForm")
         ]
 
-        for text, cmd in nav_items:
-            btn = ttk.Button(self.sidebar_frame, text=text, command=cmd)
+        for text, frame_name in nav_items:
+            # We use a lambda to tell the controller which frame to show
+            btn = ttk.Button(
+                self.sidebar_frame,
+                text=text,
+                command=lambda f=frame_name: self.controller.show_frame(f)
+            )
             btn.pack(fill='x', padx=10, pady=5)
-            self.buttons.append(btn)
+            self.sidebar_buttons.append(btn) # Add to our list for toggling
+
+    def set_navigation_state(self, enabled=True):
+        """Enable or disable all navigation buttons."""
+        state = "normal" if enabled else "disabled"
+        for btn in self.sidebar_buttons:
+            btn.config(state=state)

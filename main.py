@@ -38,11 +38,24 @@ class TFSAid(tk.Tk):
         # Start with a default view or a "Home" frame
         self.show_frame("AccountsListFrame")
 
+        # Initial State: Disable buttons until a file is opened
+        self.update_ui_state()
+
     def show_frame(self, page_name):
         frame = self.frames[page_name]
         if hasattr(frame, "refresh"):
             frame.refresh()
         frame.tkraise()
+
+    def update_ui_state(self):
+        """Checks if a database is connected and updates the sidebar buttons."""
+        is_connected = self.db.conn is not None
+        self.layout.set_navigation_state(enabled=is_connected)
+
+        # If disconnected, maybe show a blank/welcome frame
+        if not is_connected:
+            # You could create a "WelcomeFrame" to show when no DB is open
+            pass
 
     # --- Database Control Methods (Triggered by Menu) ---
 
@@ -50,12 +63,18 @@ class TFSAid(tk.Tk):
         db_path = filedialog.asksaveasfilename(defaultextension=".db", filetypes=[("SQLite DB", "*.db")])
         if db_path:
             self.db.connect(db_path)
+            self.update_ui_state() # Update buttons
             messagebox.showinfo("Success", f"Created new database: {db_path}")
 
     def open_database(self):
         db_path = filedialog.askopenfilename(filetypes=[("SQLite DB", "*.db")])
         if db_path:
+            # Avoid re-opening the same file
+            if hasattr(self.db, 'current_path') and self.db.current_path == db_path:
+                return
+
             self.db.connect(db_path)
+            self.update_ui_state() # Update buttons
             self.show_frame("AccountsListFrame") # Refresh view on open
 
     def initialize_database(self):
@@ -73,6 +92,7 @@ class TFSAid(tk.Tk):
 
     def close_database(self):
         self.db.close()
+        self.update_ui_state() # Update buttons
         messagebox.showinfo("Database", "Database closed.")
 
 if __name__ == "__main__":

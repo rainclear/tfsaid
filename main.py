@@ -26,9 +26,9 @@ class TFSAid(tk.Tk):
 
         # 4. Initialize Frames
         # a. Register the Frames
-        from ui.frames import WelcomeFrame, AccountsListFrame, TransactionsListFrame, NewTransactionFrame # etc.
+        from ui.frames import WelcomeFrame, AccountsListFrame, TransactionsListFrame, NewAccountFrame, NewTransactionFrame # etc.
         self.frames = {}
-        frame_list = (WelcomeFrame, AccountsListFrame, TransactionsListFrame, NewTransactionFrame)
+        frame_list = (WelcomeFrame, AccountsListFrame, TransactionsListFrame, NewAccountFrame, NewTransactionFrame)
         # Add all your frame classes to this tuple
         for F in frame_list:
             page_name = F.__name__
@@ -95,6 +95,28 @@ class TFSAid(tk.Tk):
         self.db.close()
         self.update_ui_state() # This will now trigger the WelcomeFrame
         messagebox.showinfo("Database", "Database closed successfully.")
+
+    def handle_save_account(self, data_tuple):
+        """Mediator: Saves account data and refreshes UI."""
+        if not self.db.conn:
+            messagebox.showerror("Error", "No database connected.")
+            return
+
+        try:
+            # 1. Tell the Model (database_manager) to save
+            self.db.save_account(data_tuple)
+
+            # 2. Success feedback
+            messagebox.showinfo("Success", "Account saved successfully.")
+
+            # 3. Clear the form in the View
+            self.frames["NewAccountFrame"].clear_form()
+
+            # 4. Redirect user to the list of accounts
+            self.show_frame("AccountsListFrame")
+
+        except Exception as e:
+            messagebox.showerror("Database Error", f"Could not save account: {e}")
 
 if __name__ == "__main__":
     app = TFSAid()

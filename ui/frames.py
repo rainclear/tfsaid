@@ -52,6 +52,103 @@ class AccountsListFrame(tk.Frame):
                 tag = 'evenrow' if i % 2 == 0 else 'oddrow'
                 self.tree.insert('', tk.END, values=row, tags=(tag,))
 
+class NewAccountFrame(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg='white')
+        self.controller = controller
+        self._setup_ui()
+
+    def _setup_ui(self):
+        """Builds the form based on the original layout."""
+        # Main container with some padding from the edges
+        container = tk.Frame(self, bg='white', padx=40, pady=20)
+        container.pack(fill="both", expand=True)
+        container.grid_columnconfigure(1, weight=1)
+
+        ttk.Label(container, text="Create New Account",
+                  font=('Arial', 18, 'bold')).grid(row=0, column=0, columnspan=2, pady=(10, 25), sticky="w")
+
+        # Define fields to build them programmatically or manually
+        # 1. Internal Name
+        ttk.Label(container, text="Account Name (Internal):").grid(row=1, column=0, sticky="w", pady=5)
+        self.entry_account_name = ttk.Entry(container)
+        self.entry_account_name.grid(row=1, column=1, sticky="ew", pady=5, padx=(10, 0))
+
+        # 2. CRA Name
+        ttk.Label(container, text="Account Name (CRA):").grid(row=2, column=0, sticky="w", pady=5)
+        self.entry_account_name_cra = ttk.Entry(container)
+        self.entry_account_name_cra.grid(row=2, column=1, sticky="ew", pady=5, padx=(10, 0))
+
+        # 3. Type
+        ttk.Label(container, text="Account Type:").grid(row=3, column=0, sticky="w", pady=5)
+        self.entry_account_type = ttk.Entry(container)
+        self.entry_account_type.grid(row=3, column=1, sticky="ew", pady=5, padx=(10, 0))
+
+        ttk.Separator(container, orient='horizontal').grid(row=4, column=0, columnspan=2, sticky='ew', pady=15)
+
+        # 4. Institution
+        ttk.Label(container, text="Institution:").grid(row=5, column=0, sticky="w", pady=5)
+        self.entry_institution = ttk.Entry(container)
+        self.entry_institution.grid(row=5, column=1, sticky="ew", pady=5, padx=(10, 0))
+
+        # 5. Account Number
+        ttk.Label(container, text="Account Number:").grid(row=6, column=0, sticky="w", pady=5)
+        self.entry_account_number = ttk.Entry(container)
+        self.entry_account_number.grid(row=6, column=1, sticky="ew", pady=5, padx=(10, 0))
+
+        ttk.Separator(container, orient='horizontal').grid(row=7, column=0, columnspan=2, sticky='ew', pady=15)
+
+        # 6. Dates
+        ttk.Label(container, text="Opening Date (YYYY-MM-DD):").grid(row=8, column=0, sticky="w", pady=5)
+        self.entry_opening_date = ttk.Entry(container)
+        self.entry_opening_date.grid(row=8, column=1, sticky="ew", pady=5, padx=(10, 0))
+
+        ttk.Label(container, text="Close Date (Optional):").grid(row=9, column=0, sticky="w", pady=5)
+        self.entry_close_date = ttk.Entry(container)
+        self.entry_close_date.grid(row=9, column=1, sticky="ew", pady=5, padx=(10, 0))
+
+        # 7. Notes
+        ttk.Label(container, text="Notes:").grid(row=10, column=0, sticky="nw", pady=5)
+        self.text_notes = tk.Text(container, height=4)
+        self.text_notes.grid(row=10, column=1, sticky="ew", pady=5, padx=(10, 0))
+
+        # Action Button
+        ttk.Button(container, text="Save Account", command=self.save).grid(
+            row=11, column=1, sticky="e", pady=20)
+
+    def clear_form(self):
+        """Resets the form to empty state."""
+        self.entry_account_name.delete(0, tk.END)
+        self.entry_account_name_cra.delete(0, tk.END)
+        self.entry_account_type.delete(0, tk.END)
+        self.entry_institution.delete(0, tk.END)
+        self.entry_account_number.delete(0, tk.END)
+        self.entry_opening_date.delete(0, tk.END)
+        self.entry_close_date.delete(0, tk.END)
+        self.text_notes.delete("1.0", tk.END)
+
+    def save(self):
+        """Collects data and passes it to the Controller."""
+        # 1. Collect data from View widgets
+        data = (
+            self.entry_account_name.get().strip(),
+            self.entry_account_name_cra.get().strip(),
+            self.entry_account_type.get().strip(),
+            self.entry_institution.get().strip(),
+            self.entry_account_number.get().strip(),
+            self.entry_opening_date.get().strip(),
+            self.entry_close_date.get().strip(),
+            self.text_notes.get("1.0", tk.END).strip()
+        )
+
+        # 2. Basic Validation: Internal name is required
+        if not data[0]:
+            messagebox.showwarning("Validation Error", "Account Name (Internal) is required.")
+            return
+
+        # 3. Hand off to Controller
+        self.controller.handle_save_account(data)
+
 class TransactionsListFrame(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg='white')

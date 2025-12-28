@@ -166,9 +166,9 @@ class WelcomeFrame(tk.Frame):
 
         # Instructions
         instr_text = (
-            "To get started, please use the 'File' menu to:\n\n"
-            "1. Open an existing database file (.db)\n"
-            "2. Create a new database file"
+            "To get started, please use the 'File' menu either to:\n\n"
+            "1. Open an existing database file (.db) or\n"
+            "2. Create a new database file.                 "
         )
         instr_label = tk.Label(
             container,

@@ -48,8 +48,10 @@ class DatabaseManager:
         self.conn.commit()
 
     def get_transactions(self):
+        # Returns: AccountName, TransDate, TransType, Amount, Notes
         sql = """SELECT A.AccountName, T.TransDate, T.TransType, T.Amount, T.Notes
-                 FROM Transactions T JOIN Accounts A ON T.Account_id = A.id ORDER BY T.TransDate"""
+                FROM Transactions T JOIN Accounts A ON T.Account_id = A.id
+                ORDER BY T.TransDate"""
         cursor = self.conn.cursor()
         cursor.execute(sql)
         return cursor.fetchall()

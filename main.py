@@ -4,13 +4,16 @@ from tkinter import filedialog, messagebox
 from dbm.database_manager import DatabaseManager
 from ui.main_window import MainWindowLayout
 from ui.menu_bar import AppMenuBar
-from ui.frames import AccountsListFrame, NewTransactionFrame #, NewRoomYearForm # etc.
+from ui.frames import AccountsListFrame, TransactionsListFrame, NewTransactionFrame #, NewRoomYearForm # etc.
 
 class TFSAid(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("TFSAid - Modular Edition")
-        self.geometry("1400x750")
+        self.title("TFSAid - Help Tracking TFSA Room")
+        self.geometry("1500x750")
+        self.minsize(1500, 750)
+        # self.columnconfigure(0, weight=1)
+        # self.rowconfigure(0, weight=1)
 
         # 1. Initialize Logic
         self.db = DatabaseManager()
@@ -26,7 +29,7 @@ class TFSAid(tk.Tk):
         self.frames = {}
         # Add all your frame classes to this tuple
 #        for F in (AccountsListFrame, NewTransactionFrame, NewRoomYearForm):
-        for F in (AccountsListFrame, NewTransactionFrame):
+        for F in (AccountsListFrame, TransactionsListFrame,  NewTransactionFrame):
             page_name = F.__name__
             frame = F(parent=self.layout.content_area, controller=self)
             self.frames[page_name] = frame

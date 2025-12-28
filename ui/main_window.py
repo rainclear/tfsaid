@@ -29,6 +29,7 @@ class MainWindowLayout:
         nav_items = [
             ("Accounts", lambda: self.controller.show_frame("AccountsListFrame")),
             ("Transactions", lambda: self.controller.show_frame("TransactionsListFrame")),
+            ("New Account", lambda: self.controller.show_frame("NewAccountFrame")),
             ("New Transaction", lambda: self.controller.show_frame("NewTransactionFrame")),
         ]
 

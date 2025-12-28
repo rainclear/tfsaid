@@ -25,7 +25,7 @@ class DatabaseManager:
 
     def get_accounts(self):
         cursor = self.conn.cursor()
-        cursor.execute("SELECT id, AccountName, AccountType, Institution, AccountNumber, OpeningDate FROM Accounts ORDER BY AccountName")
+        cursor.execute("SELECT AccountName, AccountNameCRA, AccountType, Institution, AccountNumber, OpeningDate FROM Accounts ORDER BY AccountName")
         return cursor.fetchall()
 
     def save_account(self, data):
@@ -48,8 +48,8 @@ class DatabaseManager:
         self.conn.commit()
 
     def get_transactions(self):
-        sql = """SELECT T.id, A.AccountName, T.TransDate, T.TransType, T.Amount, T.Notes
-                 FROM Transactions T JOIN Accounts A ON T.Account_id = A.id ORDER BY T.TransDate DESC"""
+        sql = """SELECT A.AccountName, T.TransDate, T.TransType, T.Amount, T.Notes
+                 FROM Transactions T JOIN Accounts A ON T.Account_id = A.id ORDER BY T.TransDate"""
         cursor = self.conn.cursor()
         cursor.execute(sql)
         return cursor.fetchall()

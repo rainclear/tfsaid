@@ -9,11 +9,23 @@ class AccountsListFrame(tk.Frame):
         self._setup_ui()
 
     def _setup_ui(self):
-        columns = ("#", "Name", "Type", "Institution", "Number", "OpeningDate")
+        """Creates the Treeview widget for displaying account data."""
+        columns = ("Account Name", "Account Name in CRA", "Type", "Institution", "Account Number", "Opening Date")
         self.tree = ttk.Treeview(self, columns=columns, show='headings')
-        for col in columns:
+
+        # Column configuration
+        column_configs = {
+            "Account Name": (150, 'w'),
+            "Account Name in CRA": (150, 'w'),
+            "Type": (120, 'center'),
+            "Institution": (150, 'w'),
+            "Account Number": (100, 'w'),
+            "Opening Date": (100, 'center')
+        }
+
+        for col, (width, anchor) in column_configs.items():
             self.tree.heading(col, text=col)
-            self.tree.column(col, width=100)
+            self.tree.column(col, width=width, anchor=anchor)
         
         vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
@@ -28,6 +40,48 @@ class AccountsListFrame(tk.Frame):
             self.tree.delete(item)
         if self.controller.db.conn:
             for row in self.controller.db.get_accounts():
+                self.tree.insert('', tk.END, values=row)
+
+class TransactionsListFrame(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg='white')
+        self.controller = controller
+        self._setup_ui()
+
+    def _setup_ui(self):
+        """Creates the Treeview for Transactions with separate Deposit/Withdrawal columns."""
+
+        columns = ("Account", "Date", "Deposit", "Withdrawal", "Notes")
+        self.tree = ttk.Treeview(self, columns=columns, show='headings')
+
+        # Column configuration
+        column_configs = {
+            "Account": (150, 'w'),
+            "Date": (100, 'center'),
+            "Deposit": (100, 'e'),    # Align numbers to the right (East)
+            "Withdrawal": (100, 'e'), # Align numbers to the right (East)
+            "Notes": (200, 'w')
+        }
+
+        for col, (width, anchor) in column_configs.items():
+            self.tree.heading(col, text=col)
+            self.tree.column(col, width=width, anchor=anchor)
+
+        # Scrollbar
+        vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=vsb.set)
+
+        # Layout
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        self.tree.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
+        vsb.grid(row=0, column=1, sticky='ns', pady=10)
+
+    def refresh(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        if self.controller.db.conn:
+            for row in self.controller.db.get_transactions():
                 self.tree.insert('', tk.END, values=row)
 
 class NewTransactionFrame(tk.Frame):

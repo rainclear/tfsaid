@@ -4,7 +4,6 @@ from tkinter import filedialog, messagebox
 from dbm.database_manager import DatabaseManager
 from ui.main_window import MainWindowLayout
 from ui.menu_bar import AppMenuBar
-from ui.frames import AccountsListFrame, TransactionsListFrame, NewTransactionFrame #, NewRoomYearForm # etc.
 
 class TFSAid(tk.Tk):
     def __init__(self):
@@ -26,17 +25,16 @@ class TFSAid(tk.Tk):
         self.layout = MainWindowLayout(self, self)
 
         # 4. Initialize Frames
+        # a. Register the Frames
+        from ui.frames import WelcomeFrame, AccountsListFrame, TransactionsListFrame, NewTransactionFrame # etc.
         self.frames = {}
+        frame_list = (WelcomeFrame, AccountsListFrame, TransactionsListFrame, NewTransactionFrame)
         # Add all your frame classes to this tuple
-#        for F in (AccountsListFrame, NewTransactionFrame, NewRoomYearForm):
-        for F in (AccountsListFrame, TransactionsListFrame,  NewTransactionFrame):
+        for F in frame_list:
             page_name = F.__name__
             frame = F(parent=self.layout.content_area, controller=self)
             self.frames[page_name] = frame
             frame.grid(row=0, column=0, sticky="nsew")
-
-        # Start with a default view or a "Home" frame
-        self.show_frame("AccountsListFrame")
 
         # Initial State: Disable buttons until a file is opened
         self.update_ui_state()
@@ -48,14 +46,16 @@ class TFSAid(tk.Tk):
         frame.tkraise()
 
     def update_ui_state(self):
-        """Checks if a database is connected and updates the sidebar buttons."""
+        """Logic to switch views based on connection status."""
         is_connected = self.db.conn is not None
         self.layout.set_navigation_state(enabled=is_connected)
 
-        # If disconnected, maybe show a blank/welcome frame
         if not is_connected:
-            # You could create a "WelcomeFrame" to show when no DB is open
-            pass
+            # Show welcome screen if no DB is open
+            self.show_frame("WelcomeFrame")
+        else:
+            # If we just opened a DB, go to the default list view
+            self.show_frame("AccountsListFrame")
 
     # --- Database Control Methods (Triggered by Menu) ---
 
@@ -91,9 +91,10 @@ class TFSAid(tk.Tk):
                 messagebox.showerror("Error", f"Failed to initialize: {e}")
 
     def close_database(self):
+        """Manually triggered from the Menu."""
         self.db.close()
-        self.update_ui_state() # Update buttons
-        messagebox.showinfo("Database", "Database closed.")
+        self.update_ui_state() # This will now trigger the WelcomeFrame
+        messagebox.showinfo("Database", "Database closed successfully.")
 
 if __name__ == "__main__":
     app = TFSAid()

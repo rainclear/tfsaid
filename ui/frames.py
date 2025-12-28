@@ -142,4 +142,46 @@ class NewTransactionFrame(tk.Frame):
         # Implementation of saving logic
         pass
 
+class WelcomeFrame(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg='white')
+        self.controller = controller
+        self._setup_ui()
+
+    def _setup_ui(self):
+        """Creates a friendly welcome screen with instructions."""
+        # Main container for centering content
+        container = tk.Frame(self, bg='white')
+        container.place(relx=0.5, rely=0.4, anchor='center')
+
+        # Welcome Title
+        title_label = tk.Label(
+            container,
+            text="Welcome to TFSAid",
+            font=('Arial', 24, 'bold'),
+            bg='white',
+            fg='#333333'
+        )
+        title_label.pack(pady=(0, 10))
+
+        # Instructions
+        instr_text = (
+            "To get started, please use the 'File' menu to:\n\n"
+            "1. Open an existing database file (.db)\n"
+            "2. Create a new database file"
+        )
+        instr_label = tk.Label(
+            container,
+            text=instr_text,
+            font=('Arial', 12),
+            bg='white',
+            fg='#666666',
+            justify='center'
+        )
+        instr_label.pack(pady=10)
+
+        # Decorative separator
+        line = tk.Frame(container, height=2, width=300, bg='#D1EAF0')
+        line.pack(pady=20)
+
 # ... You would add NewAccountFrame, RoomYearsListFrame, etc., similarly ...

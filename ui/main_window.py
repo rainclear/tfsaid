@@ -23,6 +23,10 @@ class MainWindowLayout:
         self.content_area = tk.Frame(self.root, bg="white")
         self.content_area.grid(row=0, column=1, sticky="nsew")
 
+        # This tells content_area to let the frame at (0,0) fill the whole space
+        self.content_area.grid_rowconfigure(0, weight=1)
+        self.content_area.grid_columnconfigure(0, weight=1)
+
     def _setup_sidebar(self):
         ttk.Label(self.sidebar_frame, text="Navigation", background=SIDEBAR_COLOR).pack(pady=20)
         

@@ -11,7 +11,6 @@ class AppMenuBar(tk.Menu):
         file_menu = tk.Menu(self, tearoff=0)
         file_menu.add_command(label="New Database", command=self.controller.new_database)
         file_menu.add_command(label="Open Database", command=self.controller.open_database)
-        file_menu.add_command(label="Initialize DB", command=self.controller.initialize_database)
         file_menu.add_separator()
         file_menu.add_command(label="Close DB", command=self.controller.close_database)
         file_menu.add_separator()

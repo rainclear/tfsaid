@@ -1,4 +1,5 @@
 # main.py
+import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from dbm.database_manager import DatabaseManager
@@ -58,37 +59,52 @@ class TFSAid(tk.Tk):
             self.show_frame("AccountsListFrame")
 
     # --- Database Control Methods (Triggered by Menu) ---
-
     def new_database(self):
-        db_path = filedialog.asksaveasfilename(defaultextension=".db", filetypes=[("SQLite DB", "*.db")])
+        """Creates a new database and automatically runs the schema script."""
+        db_path = filedialog.asksaveasfilename(
+            defaultextension=".db",
+            filetypes=[("SQLite DB", "*.db")],
+            title="Create New TFSAid Database"
+        )
+
         if db_path:
-            self.db.connect(db_path)
-            self.update_ui_state() # Update buttons
-            messagebox.showinfo("Success", f"Created new database: {db_path}")
+            # 1. Locate the schema file (assuming it's in /sql/initdb.sql relative to main.py)
+            # Using __file__ ensures it works even if you run the app from a different folder
+            base_dir = os.path.dirname(__file__)
+            schema_path = os.path.join(base_dir, 'sql', 'initdb.sql')
+
+            try:
+                # 2. Use the Model to create the file AND run the SQL script
+                self.db.initialize_schema(db_path, schema_path)
+
+                # 3. Store the path so we can check it later if needed
+                self.db.current_path = db_path
+
+                # 4. Update UI
+                self.update_ui_state()
+                self.show_frame("AccountsListFrame")
+                messagebox.showinfo("Success", f"New database created and initialized:\n{db_path}")
+
+            except FileNotFoundError:
+                messagebox.showerror("Error", f"Could not find schema file at:\n{schema_path}")
+            except Exception as e:
+                messagebox.showerror("Database Error", f"Failed to initialize: {e}")
 
     def open_database(self):
+        """Opens an existing database file."""
         db_path = filedialog.askopenfilename(filetypes=[("SQLite DB", "*.db")])
         if db_path:
             # Avoid re-opening the same file
             if hasattr(self.db, 'current_path') and self.db.current_path == db_path:
                 return
 
-            self.db.connect(db_path)
-            self.update_ui_state() # Update buttons
-            self.show_frame("AccountsListFrame") # Refresh view on open
-
-    def initialize_database(self):
-        if not self.db.conn:
-            messagebox.showwarning("Warning", "Open or create a database first!")
-            return
-        
-        schema_path = filedialog.askopenfilename(filetypes=[("SQL scripts", "*.sql")])
-        if schema_path:
             try:
-                self.db.initialize_schema(self.db.conn_path, schema_path) # Need to track path in DB manager
-                messagebox.showinfo("Success", "Database initialized successfully.")
+                self.db.connect(db_path)
+                self.db.current_path = db_path # Keep track of path
+                self.update_ui_state()
+                self.show_frame("AccountsListFrame")
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to initialize: {e}")
+                messagebox.showerror("Error", f"Could not open database: {e}")
 
     def close_database(self):
         """Manually triggered from the Menu."""

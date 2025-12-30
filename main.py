@@ -43,7 +43,7 @@ class TFSAid(tk.Tk):
     def show_frame(self, page_name):
         frame = self.frames[page_name]
         if hasattr(frame, "refresh"):
-            frame.refresh()
+            frame.refresh() # This triggers the database fetch
         frame.tkraise()
 
     def update_ui_state(self):
@@ -192,6 +192,28 @@ class TFSAid(tk.Tk):
                 self.frames["TransactionsListFrame"].refresh()
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to delete transaction: {e}")
+
+    def prepare_edit_transaction(self, trans_id):
+        # 1. Fetch the specific record
+        trans_data = self.db.get_transaction_by_id(trans_id)
+        # 2. Fetch all accounts so the dropdown can be populated
+        accounts = self.db.get_accounts()
+
+        if trans_data:
+            self.frames["NewTransactionFrame"].load_transaction_data(trans_id, trans_data, accounts)
+            self.show_frame("NewTransactionFrame")
+
+    def handle_save_transaction(self, trans_id, account_id, date, t_type, amount, notes):
+        try:
+            if trans_id:
+                self.db.update_transaction(trans_id, account_id, date, t_type, amount, notes)
+            else:
+                self.db.save_transaction(account_id, date, t_type, amount, notes)
+
+            # Switch back to the list and refresh it automatically
+            self.show_frame("TransactionsListFrame")
+        except Exception as e:
+            messagebox.showerror("Error", f"Save failed: {e}")
 
 if __name__ == "__main__":
     app = TFSAid()

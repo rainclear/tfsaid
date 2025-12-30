@@ -242,7 +242,7 @@ class TransactionsListFrame(tk.Frame):
         self._setup_ui()
 
     def _setup_ui(self):
-        # UPDATED: Added ID and Actions columns
+        # Added 'ID' at start and 'Actions' at the end
         self.columns = ("ID", "Account", "Date", "Deposit", "Withdrawal", "Notes", "Actions")
         self.tree = ttk.Treeview(self, columns=self.columns, show='headings')
 
@@ -262,7 +262,6 @@ class TransactionsListFrame(tk.Frame):
 
         # Hide ID column
         self.tree.column("ID", width=0, stretch=tk.NO)
-
         # Bind click event for the Delete action
         self.tree.bind("<Button-1>", self._on_click)
 
@@ -277,71 +276,166 @@ class TransactionsListFrame(tk.Frame):
         vsb.grid(row=0, column=1, sticky='ns', pady=10)
 
     def _on_click(self, event):
-        """Detects if 'Delete' was clicked in the Actions column."""
+        """Identifies if Edit or Delete was clicked based on cell horizontal position."""
         region = self.tree.identify_region(event.x, event.y)
         if region == "cell":
             column = self.tree.identify_column(event.x)
             item_id = self.tree.identify_row(event.y)
+            values = self.tree.item(item_id, 'values')
 
-            # Check if user clicked the last column (Actions)
-            if column == f"#{len(self.columns)}":
-                values = self.tree.item(item_id, 'values')
-                # values[0]=ID, values[2]=Date, values[3]=Deposit, values[4]=Withdrawal
+            if not values:
+                return
+
+            # Verify we are clicking in the 'Actions' column
+            if self.tree.heading(column, "text") == "Actions":
+                # Get the cell's bounding box: (x, y, width, height)
+                bbox = self.tree.bbox(item_id, column)
+                if not bbox:
+                    return
+
+                # Calculate where inside the cell the click happened
+                click_x_in_cell = event.x - bbox[0]
+                cell_width = bbox[2]
+
                 trans_id = values[0]
                 date = values[2]
-                amt = values[3] if values[3] else values[4] # Get whichever amount is present
+                # Determine amount for the prompt: check Deposit (index 3) then Withdrawal (index 4)
+                amount = values[3] if values[3] != "" else values[4]
 
-                self.controller.confirm_delete_transaction(trans_id, date, amt)
+                # Use the midpoint (width/2) to separate Edit and Delete
+                if click_x_in_cell < (cell_width / 2):
+                    self.controller.prepare_edit_transaction(trans_id)
+                else:
+                    self.controller.confirm_delete_transaction(trans_id, date, amount)
 
     def refresh(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
         if self.controller.db.conn:
-            raw_data = self.controller.db.get_transactions()
-
-            for i, row in enumerate(raw_data):
-                # row structure from DB: (ID, Name, Date, Type, Amount, Notes)
+            transactions = self.controller.db.get_transactions()
+            for i, row in enumerate(transactions):
                 t_id, name, date, t_type, amount, notes = row
 
-                formatted_amount = f"{amount:.2f}"
-                deposit = formatted_amount if t_type == 'Deposit' else ""
-                withdrawal = formatted_amount if t_type == 'Withdrawal' else ""
+                dep = f"{amount:.2f}" if t_type == 'Deposit' else ""
+                wd = f"{amount:.2f}" if t_type == 'Withdrawal' else ""
                 tag = 'evenrow' if i % 2 == 0 else 'oddrow'
 
-                # Insert with ID and 'Delete' text
+                # Ensure "Edit | Delete" is the 7th value (index 6)
                 self.tree.insert('', tk.END,
-                                 values=(t_id, name, date, deposit, withdrawal, notes, "Delete"),
+                                 values=(t_id, name, date, dep, wd, notes, "Edit | Delete"),
                                  tags=(tag,))
 
 class NewTransactionFrame(tk.Frame):
-    # ... (This class remains unchanged from your snippet) ...
     def __init__(self, parent, controller):
-        super().__init__(parent, bg='white', padx=20, pady=20, bd=1, relief="solid")
+        super().__init__(parent, bg='white')
         self.controller = controller
+        self.edit_id = None
+        self._is_loading_edit = False
+        self.account_map = {} # To map Name -> ID for the combobox
         self._setup_ui()
 
     def _setup_ui(self):
-        ttk.Label(self, text="Add New Transaction", font=('Arial', 16, 'bold')).grid(row=0, column=0, columnspan=2, pady=20)
-        
-        ttk.Label(self, text="Select Account:").grid(row=1, column=0, sticky="w")
-        self.combo_account = ttk.Combobox(self, state="readonly")
+        container = tk.Frame(self, bg='white', padx=20, pady=20)
+        container.pack(fill="both", expand=True)
+        container.grid_columnconfigure(1, weight=1)
+
+        self.lbl_title = tk.Label(container, text="Add New Transaction", font=('Arial', 16, 'bold'), bg='white')
+        self.lbl_title.grid(row=0, column=0, columnspan=2, pady=(0, 20))
+
+        # 1. Account Dropdown
+        tk.Label(container, text="Select Account:", bg='white').grid(row=1, column=0, sticky="w", pady=5)
+        self.combo_account = ttk.Combobox(container, state="readonly")
         self.combo_account.grid(row=1, column=1, sticky="ew", padx=10)
 
-        ttk.Label(self, text="Amount:").grid(row=2, column=0, sticky="w")
-        self.entry_amount = ttk.Entry(self)
-        self.entry_amount.grid(row=2, column=1, sticky="ew", padx=10)
+        # 2. Date
+        tk.Label(container, text="Date (YYYY-MM-DD):", bg='white').grid(row=2, column=0, sticky="w", pady=5)
+        self.entry_trans_date = ttk.Entry(container)
+        self.entry_trans_date.grid(row=2, column=1, sticky="ew", padx=10)
 
-        ttk.Button(self, text="Save", command=self.save).grid(row=3, column=1, sticky="e", pady=10)
+        # 3. Transaction Type (Radio Buttons)
+        tk.Label(container, text="Transaction Type:", bg='white').grid(row=3, column=0, sticky="w", pady=5)
+        self.trans_type_var = tk.StringVar(value="Deposit")
+
+        radio_frame = tk.Frame(container, bg='white')
+        radio_frame.grid(row=3, column=1, sticky="w", padx=10)
+
+        tk.Radiobutton(radio_frame, text="Deposit", variable=self.trans_type_var,
+                       value="Deposit", bg='white').pack(side="left")
+        tk.Radiobutton(radio_frame, text="Withdrawal", variable=self.trans_type_var,
+                       value="Withdrawal", bg='white').pack(side="left", padx=15)
+
+        # 4. Amount
+        tk.Label(container, text="Amount:", bg='white').grid(row=4, column=0, sticky="w", pady=5)
+        self.entry_amount = ttk.Entry(container)
+        self.entry_amount.grid(row=4, column=1, sticky="ew", padx=10)
+
+        # 5. Notes
+        tk.Label(container, text="Notes:", bg='white').grid(row=5, column=0, sticky="nw", pady=5)
+        self.text_trans_notes = tk.Text(container, width=40, height=4)
+        self.text_trans_notes.grid(row=5, column=1, sticky="ew", padx=10)
+
+        self.save_btn = ttk.Button(container, text="Save Transaction", command=self.save)
+        self.save_btn.grid(row=6, column=1, sticky="e", pady=20, padx=10)
 
     def refresh(self):
-        if self.controller.db.conn:
-            self.account_map = self.controller.db.get_account_map()
-            self.combo_account['values'] = list(self.account_map.keys())
+        if self._is_loading_edit:
+            self._is_loading_edit = False
+            return
+        self.clear_form()
+        # Populate account dropdown
+        accounts = self.controller.db.get_accounts()
+        self.account_map = {acc[1]: acc[0] for acc in accounts}
+        self.combo_account['values'] = list(self.account_map.keys())
+
+    def load_transaction_data(self, trans_id, data, accounts):
+        """Pre-fills form for editing and sets the edit flag."""
+        self.clear_form()
+        self.edit_id = trans_id
+        self._is_loading_edit = True # Prevents refresh() from clearing the form immediately
+
+        # data: (id, Account_id, TransDate, TransType, Amount, Notes)
+        self.account_map = {acc[1]: acc[0] for acc in accounts}
+        self.combo_account['values'] = list(self.account_map.keys())
+
+        # Select Account
+        for name, acc_id in self.account_map.items():
+            if acc_id == data[1]:
+                self.combo_account.set(name)
+                break
+
+        self.entry_trans_date.insert(0, data[2])
+        self.trans_type_var.set(data[3]) # Updates Radio Buttons
+        self.entry_amount.insert(0, str(data[4]))
+        self.text_trans_notes.insert("1.0", data[5] if data[5] else "")
+
+        self.lbl_title.config(text="Edit Transaction")
+        self.save_btn.config(text="Update Transaction")
+
+    def clear_form(self):
+        self.edit_id = None
+        self.lbl_title.config(text="Add New Transaction")
+        self.save_btn.config(text="Save Transaction")
+        self.combo_account.set('')
+        self.entry_trans_date.delete(0, tk.END)
+        self.trans_type_var.set("Deposit")
+        self.entry_amount.delete(0, tk.END)
+        self.text_trans_notes.delete("1.0", tk.END)
 
     def save(self):
-        # Implementation of saving logic
-        pass
+        acc_name = self.combo_account.get()
+        if not acc_name:
+            messagebox.showwarning("Input Error", "Please select an account.")
+            return
+
+        self.controller.handle_save_transaction(
+            self.edit_id,
+            self.account_map[acc_name],
+            self.entry_trans_date.get(),
+            self.trans_type_var.get(),
+            float(self.entry_amount.get() or 0),
+            self.text_trans_notes.get("1.0", tk.END).strip()
+        )
 
 class WelcomeFrame(tk.Frame):
     def __init__(self, parent, controller):

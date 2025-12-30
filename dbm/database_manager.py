@@ -93,13 +93,26 @@ class DatabaseManager:
         self.conn.commit()
 
     def get_transactions(self):
-        # UPDATED: Now returns ID as the first element for internal tracking
+        """Fetches transactions with ID for UI management."""
         sql = """SELECT T.id, A.AccountName, T.TransDate, T.TransType, T.Amount, T.Notes
                 FROM Transactions T JOIN Accounts A ON T.Account_id = A.id
-                ORDER BY T.TransDate DESC""" # Newest first is usually better
+                ORDER BY T.TransDate"""
         cursor = self.conn.cursor()
         cursor.execute(sql)
         return cursor.fetchall()
+
+    def get_transaction_by_id(self, trans_id):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM Transactions WHERE id = ?", (trans_id,))
+        return cursor.fetchone()
+
+    def update_transaction(self, trans_id, account_id, date, t_type, amount, notes):
+        cursor = self.conn.cursor()
+        sql = """UPDATE Transactions
+                 SET Account_id=?, TransDate=?, TransType=?, Amount=?, Notes=?
+                 WHERE id = ?"""
+        cursor.execute(sql, (account_id, date, t_type, amount, notes, trans_id))
+        self.conn.commit()
 
     def save_room_year(self, date, amount):
         cursor = self.conn.cursor()

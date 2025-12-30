@@ -23,11 +23,6 @@ class DatabaseManager:
         self.conn.executescript(sql_script)
         self.conn.commit()
 
-    def get_accounts(self):
-        cursor = self.conn.cursor()
-        cursor.execute("SELECT AccountName, AccountNameCRA, AccountType, Institution, AccountNumber, OpeningDate FROM Accounts ORDER BY AccountName")
-        return cursor.fetchall()
-
     def save_account(self, data):
         sql = """INSERT INTO Accounts 
                  (AccountName, AccountNameCRA, AccountType, Institution, AccountNumber, OpeningDate, CloseDate, Notes) 
@@ -40,6 +35,32 @@ class DatabaseManager:
         cursor = self.conn.cursor()
         cursor.execute("SELECT id, AccountName FROM Accounts ORDER BY AccountName")
         return {name: acc_id for acc_id, name in cursor.fetchall()}
+
+    def get_accounts(self):
+        """Modified to include the 'id' as the first element."""
+        cursor = self.conn.cursor()
+        # We fetch 'id' but we will hide it in the UI
+        sql = """SELECT id, AccountName, AccountNameCRA, AccountType,
+                        Institution, AccountNumber, OpeningDate
+                 FROM Accounts ORDER BY AccountName"""
+        cursor.execute(sql)
+        return cursor.fetchall()
+
+    def delete_account(self, account_id):
+        """Deletes an account and all its associated transactions."""
+        cursor = self.conn.cursor()
+        try:
+            # Delete linked transactions first (Foreign Key safety)
+            cursor.execute("DELETE FROM Transactions WHERE Account_id = ?", (account_id,))
+
+            # Delete the account itself
+            cursor.execute("DELETE FROM Accounts WHERE id = ?", (account_id,))
+
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            self.conn.rollback()
+            raise e
 
     def save_transaction(self, account_id, date, t_type, amount, notes):
         cursor = self.conn.cursor()

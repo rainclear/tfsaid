@@ -11,22 +11,30 @@ class AccountsListFrame(tk.Frame):
 
     def _setup_ui(self):
         """Creates the Treeview widget for displaying account data."""
-        columns = ("Account Name", "Account Name in CRA", "Type", "Institution", "Account Number", "Opening Date")
-        self.tree = ttk.Treeview(self, columns=columns, show='headings')
+        self.columns = ("ID", "Account Name", "Account Name in CRA", "Type", "Institution", "Account Number", "Opening Date", "Actions")
+        self.tree = ttk.Treeview(self, columns=self.columns, show='headings')
 
         # Column configuration
         column_configs = {
+            "ID": (0, 'center'), # We will hide this
             "Account Name": (150, 'w'),
             "Account Name in CRA": (150, 'w'),
-            "Type": (120, 'center'),
-            "Institution": (150, 'w'),
+            "Type": (100, 'center'),
+            "Institution": (120, 'w'),
             "Account Number": (100, 'w'),
-            "Opening Date": (100, 'center')
+            "Opening Date": (100, 'center'),
+            "Actions": (80, 'center') # Action column
         }
 
         for col, (width, anchor) in column_configs.items():
             self.tree.heading(col, text=col)
             self.tree.column(col, width=width, anchor=anchor)
+
+        # Hide the ID column (it's for internal use only)
+        self.tree.column("ID", width=0, stretch=tk.NO)
+
+        # Bind the click event to detect "Delete" clicks
+        self.tree.bind("<Button-1>", self._on_click)
         
         # Scrollbar
         vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
@@ -42,15 +50,32 @@ class AccountsListFrame(tk.Frame):
         self.tree.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
         vsb.grid(row=0, column=1, sticky='ns', pady=10)
 
+    def _on_click(self, event):
+        """Detects if the user clicked the 'Delete' text in the Actions column."""
+        region = self.tree.identify_region(event.x, event.y)
+        if region == "cell":
+            column = self.tree.identify_column(event.x)
+            item_id = self.tree.identify_row(event.y)
+
+            # Check if the 'Actions' column (column #8) was clicked
+            if column == f"#{len(self.columns)}":
+                values = self.tree.item(item_id, 'values')
+                if values:
+                    account_id = values[0]
+                    account_name = values[1]
+                    # Call the controller to handle the confirmation and deletion
+                    self.controller.confirm_delete_account(account_id, account_name)
+
     def refresh(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
         if self.controller.db.conn:
-            # Use enumerate to get an index for alternating
             for i, row in enumerate(self.controller.db.get_accounts()):
                 tag = 'evenrow' if i % 2 == 0 else 'oddrow'
-                self.tree.insert('', tk.END, values=row, tags=(tag,))
+                # Append "🗑 Delete" to the row data for the Actions column
+                display_row = list(row) + ["🗑 Delete"]
+                self.tree.insert('', tk.END, values=display_row, tags=(tag,))
 
 class NewAccountFrame(tk.Frame):
     def __init__(self, parent, controller):

@@ -134,6 +134,23 @@ class TFSAid(tk.Tk):
         except Exception as e:
             messagebox.showerror("Database Error", f"Could not save account: {e}")
 
+    def confirm_delete_account(self, account_id, account_name):
+        """Shows a warning and deletes the account if confirmed."""
+        msg = (f"Are you sure you want to delete '{account_name}'?\n\n"
+               "WARNING: This will also delete ALL transactions associated with this account. "
+               "This action cannot be undone.")
+
+        if messagebox.askyesno("Confirm Delete", msg, icon='warning'):
+            try:
+                self.db.delete_account(account_id)
+                messagebox.showinfo("Deleted", f"Account '{account_name}' has been removed.")
+
+                # Refresh the view to show the updated list
+                self.frames["AccountsListFrame"].refresh()
+
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to delete account: {e}")
+
 if __name__ == "__main__":
     app = TFSAid()
     app.mainloop()

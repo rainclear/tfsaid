@@ -51,37 +51,90 @@ class AccountsListFrame(tk.Frame):
         vsb.grid(row=0, column=1, sticky='ns', pady=10)
 
     def _on_click(self, event):
-        """Detects if the user clicked the 'Delete' text in the Actions column."""
         region = self.tree.identify_region(event.x, event.y)
         if region == "cell":
             column = self.tree.identify_column(event.x)
             item_id = self.tree.identify_row(event.y)
 
-            # Check if the 'Actions' column (column #8) was clicked
+            # Actions column check
             if column == f"#{len(self.columns)}":
                 values = self.tree.item(item_id, 'values')
-                if values:
-                    account_id = values[0]
-                    account_name = values[1]
-                    # Call the controller to handle the confirmation and deletion
-                    self.controller.confirm_delete_account(account_id, account_name)
+                acc_id, acc_name = values[0], values[1]
+
+                # Simple text-based detection: 
+                # If the user clicks on the left side of the cell, it's Edit.
+                # Treeview doesn't give us the word, so we use the X coordinate within the cell.
+                column_box = self.tree.bbox(item_id, column)
+                click_x_in_cell = event.x - column_box[0]
+
+                if click_x_in_cell < column_box[2] / 2:
+                    # Clicked left half (Edit)
+                    self.controller.prepare_edit_account(acc_id)
+                else:
+                    # Clicked right half (Delete)
+                    self.controller.confirm_delete_account(acc_id, acc_name)
 
     def refresh(self):
+        """Clears the current list and re-populates it from the database."""
+        # 1. FIX: Clear ALL existing items in the Treeview first
         for item in self.tree.get_children():
             self.tree.delete(item)
 
+        # 2. FIX: Only use ONE loop and ensure there is an active connection
         if self.controller.db.conn:
-            for i, row in enumerate(self.controller.db.get_accounts()):
+            accounts = self.controller.db.get_accounts()
+
+            for i, row in enumerate(accounts):
                 tag = 'evenrow' if i % 2 == 0 else 'oddrow'
-                # Append "🗑 Delete" to the row data for the Actions column
-                display_row = list(row) + ["🗑 Delete"]
+
+                # 3. FIX: Create a unified 'Edit | Delete' action for every row
+                # row[0] is the ID, row[1] is the Account Name, etc.
+                display_row = list(row) + ["Edit | Delete"]
+
                 self.tree.insert('', tk.END, values=display_row, tags=(tag,))
 
 class NewAccountFrame(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg='white')
         self.controller = controller
+        self.edit_id = None # Track if we are editing or adding
+        self._is_loading_edit = False # Flag to prevent refresh from wiping edit data
         self._setup_ui()
+
+    def refresh(self):
+        """Standard refresh called by show_frame. Clears the form for 'New' mode."""
+        # If we just called load_account_data, skip clearing this one time
+        if self._is_loading_edit:
+            self._is_loading_edit = False
+            return
+
+        self.clear_form()
+
+    def load_account_data(self, account_id, data):
+        """Pre-fills the form with existing account data."""
+        self.clear_form() # This sets _is_loading_edit to False initially
+        self.edit_id = account_id
+
+        # IMPORTANT: Set this flag to True so the upcoming refresh() doesn't wipe this data
+        self._is_loading_edit = True
+
+        # data index matches your SELECT * query order from database_manager.py
+        # [0:id, 1:Name, 2:CRA, 3:Type, 4:Inst, 5:Num, 6:Open, 7:Close, 8:Notes]
+        self.entry_account_name.insert(0, data[1])
+        self.entry_account_name_cra.insert(0, data[2])
+        self.entry_account_type.insert(0, data[3])
+        self.entry_institution.insert(0, data[4])
+        self.entry_account_number.insert(0, data[5])
+        self.entry_opening_date.insert(0, data[6])
+
+        # Load Close Date (index 7) if it exists
+        if data[7]:
+            self.entry_close_date.insert(0, data[7])
+
+        self.text_notes.insert("1.0", data[8] if data[8] else "")
+
+        # Change button text to reflect Edit Mode
+        self.save_btn.config(text="Update Account")
 
     def _setup_ui(self):
         """Builds the form based on the original layout."""
@@ -138,18 +191,21 @@ class NewAccountFrame(tk.Frame):
         self.text_notes.grid(row=10, column=1, sticky="ew", pady=5, padx=(10, 0))
 
         # Action Button
-        ttk.Button(container, text="Save Account", command=self.save).grid(
-            row=11, column=1, sticky="e", pady=20)
+        self.save_btn = ttk.Button(container, text="Save Account", command=self.save)
+        self.save_btn.grid(row=11, column=1, sticky="e", pady=20)
 
     def clear_form(self):
-        """Resets the form to empty state."""
-        self.entry_account_name.delete(0, tk.END)
-        self.entry_account_name_cra.delete(0, tk.END)
-        self.entry_account_type.delete(0, tk.END)
-        self.entry_institution.delete(0, tk.END)
-        self.entry_account_number.delete(0, tk.END)
-        self.entry_opening_date.delete(0, tk.END)
-        self.entry_close_date.delete(0, tk.END)
+        """Resets the form to empty state and 'New' mode."""
+        self.edit_id = None
+        self._is_loading_edit = False
+        self.save_btn.config(text="Save Account")
+
+        # Clear all input widgets
+        for widget in [self.entry_account_name, self.entry_account_name_cra,
+                       self.entry_account_type, self.entry_institution,
+                       self.entry_account_number, self.entry_opening_date,
+                       self.entry_close_date]:
+            widget.delete(0, tk.END)
         self.text_notes.delete("1.0", tk.END)
 
     def save(self):
@@ -172,7 +228,12 @@ class NewAccountFrame(tk.Frame):
             return
 
         # 3. Hand off to Controller
-        self.controller.handle_save_account(data)
+        if self.edit_id:
+            # Tell controller to update
+            self.controller.handle_update_account(self.edit_id, data)
+        else:
+            # Tell controller to save new
+            self.controller.handle_save_account(data)
 
 class TransactionsListFrame(tk.Frame):
     def __init__(self, parent, controller):

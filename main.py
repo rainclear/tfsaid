@@ -134,6 +134,35 @@ class TFSAid(tk.Tk):
         except Exception as e:
             messagebox.showerror("Database Error", f"Could not save account: {e}")
 
+    def prepare_edit_account(self, account_id):
+        """Fetches data and opens the form in Edit Mode."""
+        # 1. Fetch the specific record from the DB
+        # (You'll need a simple 'get_account_by_id' method in your DatabaseManager)
+        account_data = self.db.get_account_by_id(account_id)
+
+        if account_data:
+            # 2. Tell the frame to load the data
+            form_frame = self.frames["NewAccountFrame"]
+            form_frame.load_account_data(account_id, account_data)
+
+            # 3. Switch to the form view
+            self.show_frame("NewAccountFrame")
+
+    def handle_update_account(self, account_id, data):
+        """Calls the model to update the record."""
+        try:
+            self.db.update_account(account_id, data)
+            messagebox.showinfo("Success", "Account updated successfully.")
+
+            # Reset the form state for next use
+            self.frames["NewAccountFrame"].edit_id = None
+            self.frames["NewAccountFrame"].save_btn.config(text="Save Account")
+
+            self.show_frame("AccountsListFrame")
+        except Exception as e:
+            messagebox.showerror("Error", f"Update failed: {e}")
+
+
     def confirm_delete_account(self, account_id, account_name):
         """Shows a warning and deletes the account if confirmed."""
         msg = (f"Are you sure you want to delete '{account_name}'?\n\n"

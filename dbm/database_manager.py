@@ -86,11 +86,17 @@ class DatabaseManager:
                           VALUES (?, ?, ?, ?, ?)""", (account_id, date, t_type, amount, notes))
         self.conn.commit()
 
+    def delete_transaction(self, trans_id):
+        """Deletes a specific transaction record."""
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM Transactions WHERE id = ?", (trans_id,))
+        self.conn.commit()
+
     def get_transactions(self):
-        # Returns: AccountName, TransDate, TransType, Amount, Notes
-        sql = """SELECT A.AccountName, T.TransDate, T.TransType, T.Amount, T.Notes
+        # UPDATED: Now returns ID as the first element for internal tracking
+        sql = """SELECT T.id, A.AccountName, T.TransDate, T.TransType, T.Amount, T.Notes
                 FROM Transactions T JOIN Accounts A ON T.Account_id = A.id
-                ORDER BY T.TransDate"""
+                ORDER BY T.TransDate DESC""" # Newest first is usually better
         cursor = self.conn.cursor()
         cursor.execute(sql)
         return cursor.fetchall()

@@ -162,7 +162,6 @@ class TFSAid(tk.Tk):
         except Exception as e:
             messagebox.showerror("Error", f"Update failed: {e}")
 
-
     def confirm_delete_account(self, account_id, account_name):
         """Shows a warning and deletes the account if confirmed."""
         msg = (f"Are you sure you want to delete '{account_name}'?\n\n"
@@ -179,6 +178,20 @@ class TFSAid(tk.Tk):
 
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to delete account: {e}")
+
+    def confirm_delete_transaction(self, trans_id, date, amount):
+        """Shows a warning and deletes the transaction if confirmed."""
+        msg = f"Are you sure you want to delete the transaction from {date} for ${amount}?"
+
+        if messagebox.askyesno("Confirm Delete", msg, icon='warning'):
+            try:
+                self.db.delete_transaction(trans_id)
+                messagebox.showinfo("Deleted", "Transaction removed successfully.")
+
+                # Refresh the transaction list view
+                self.frames["TransactionsListFrame"].refresh()
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to delete transaction: {e}")
 
 if __name__ == "__main__":
     app = TFSAid()

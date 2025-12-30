@@ -242,36 +242,56 @@ class TransactionsListFrame(tk.Frame):
         self._setup_ui()
 
     def _setup_ui(self):
-        """Creates the Treeview for Transactions with separate Deposit/Withdrawal columns."""
-        columns = ("Account", "Date", "Deposit", "Withdrawal", "Notes")
-        self.tree = ttk.Treeview(self, columns=columns, show='headings')
+        # UPDATED: Added ID and Actions columns
+        self.columns = ("ID", "Account", "Date", "Deposit", "Withdrawal", "Notes", "Actions")
+        self.tree = ttk.Treeview(self, columns=self.columns, show='headings')
 
-        # Column configuration
         column_configs = {
+            "ID": (0, 'center'),         # Will be hidden
             "Account": (150, 'w'),
             "Date": (100, 'center'),
             "Deposit": (100, 'e'),
             "Withdrawal": (100, 'e'),
-            "Notes": (200, 'w')
+            "Notes": (200, 'w'),
+            "Actions": (80, 'center')    # New Actions column
         }
 
         for col, (width, anchor) in column_configs.items():
             self.tree.heading(col, text=col)
             self.tree.column(col, width=width, anchor=anchor)
 
-        # Scrollbar
+        # Hide ID column
+        self.tree.column("ID", width=0, stretch=tk.NO)
+
+        # Bind click event for the Delete action
+        self.tree.bind("<Button-1>", self._on_click)
+
         vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
-
-        # Configure Tags
         self.tree.tag_configure('oddrow', background=ROW_COLOR_LIGHT)
         self.tree.tag_configure('evenrow', background=ROW_COLOR_DARK)
 
-        # Layout
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
         self.tree.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
         vsb.grid(row=0, column=1, sticky='ns', pady=10)
+
+    def _on_click(self, event):
+        """Detects if 'Delete' was clicked in the Actions column."""
+        region = self.tree.identify_region(event.x, event.y)
+        if region == "cell":
+            column = self.tree.identify_column(event.x)
+            item_id = self.tree.identify_row(event.y)
+
+            # Check if user clicked the last column (Actions)
+            if column == f"#{len(self.columns)}":
+                values = self.tree.item(item_id, 'values')
+                # values[0]=ID, values[2]=Date, values[3]=Deposit, values[4]=Withdrawal
+                trans_id = values[0]
+                date = values[2]
+                amt = values[3] if values[3] else values[4] # Get whichever amount is present
+
+                self.controller.confirm_delete_transaction(trans_id, date, amt)
 
     def refresh(self):
         for item in self.tree.get_children():
@@ -281,19 +301,17 @@ class TransactionsListFrame(tk.Frame):
             raw_data = self.controller.db.get_transactions()
 
             for i, row in enumerate(raw_data):
-                # Unpack raw data from Model
-                name, date, t_type, amount, notes = row
+                # row structure from DB: (ID, Name, Date, Type, Amount, Notes)
+                t_id, name, date, t_type, amount, notes = row
 
-                # Split amount based on type
                 formatted_amount = f"{amount:.2f}"
                 deposit = formatted_amount if t_type == 'Deposit' else ""
                 withdrawal = formatted_amount if t_type == 'Withdrawal' else ""
-
-                # Determine tag for zebra striping
                 tag = 'evenrow' if i % 2 == 0 else 'oddrow'
 
+                # Insert with ID and 'Delete' text
                 self.tree.insert('', tk.END,
-                                 values=(name, date, deposit, withdrawal, notes),
+                                 values=(t_id, name, date, deposit, withdrawal, notes, "Delete"),
                                  tags=(tag,))
 
 class NewTransactionFrame(tk.Frame):

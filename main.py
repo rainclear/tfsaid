@@ -30,11 +30,11 @@ class TFSAid(tk.Tk):
         # a. Register the Frames
         from ui.frames import (WelcomeFrame, AccountsListFrame, TransactionsListFrame,
                               RoomYearsListFrame, NewAccountFrame, NewTransactionFrame,
-                              NewRoomYearFrame, CRAReportFrame) # Ensure this matches
+                              NewRoomYearFrame, AnnualSummaryFrame, CRAReportFrame) # Ensure this matches
         self.frames = {}
         frame_list = (WelcomeFrame, AccountsListFrame, TransactionsListFrame,
                       RoomYearsListFrame, NewAccountFrame, NewTransactionFrame,
-                      NewRoomYearFrame, CRAReportFrame)
+                      NewRoomYearFrame, AnnualSummaryFrame, CRAReportFrame)
 
         # Add all your frame classes to this tuple
         for F in frame_list:

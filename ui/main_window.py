@@ -37,6 +37,7 @@ class MainWindowLayout:
             ("New Account", "NewAccountFrame"),
             ("New Transaction", "NewTransactionFrame"),
             ("New Room/Year", "NewRoomYearFrame"),
+            ("Annual Summary", "AnnualSummaryFrame"),
             ("Report (CRA Format)", "CRAReportFrame")
         ]
 

@@ -805,3 +805,105 @@ class CRAReportFrame(tk.Frame):
 
         # Empty row for visual spacing between account groups
         self.tree.insert('', tk.END, values=("", "", "", "", ""))
+
+# ui/frames.py
+
+class AnnualSummaryFrame(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg='white')
+        self.controller = controller
+        self._setup_ui()
+
+    def _setup_ui(self):
+        container = tk.Frame(self, bg='white', padx=20, pady=20)
+        container.pack(fill="both", expand=True)
+
+        # 1. Main Title
+        tk.Label(
+            container,
+            text="Annual Contribution Room Summary",
+            font=('Arial', 18, 'bold'),
+            bg='white',
+            fg='#333333'
+        ).pack(pady=(0, 5))
+
+        # 2. ADDED: Summary Status Line
+        self.status_label = tk.Label(
+            container,
+            text="",
+            font=('Arial', 11, 'italic'),
+            bg='white'
+        )
+        self.status_label.pack(pady=(0, 15))
+
+        # 3. Table Setup
+        cols = ("Year", "New Room", "Total Start Room", "Deposit", "Withdrawal", "Remaining Room")
+        self.tree = ttk.Treeview(container, columns=cols, show='headings', height=20)
+
+        for col in cols:
+            self.tree.heading(col, text=col)
+            anchor = 'center' if col == "Year" else 'e'
+            self.tree.column(col, width=140, anchor=anchor)
+
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        self.tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Styles
+        self.tree.tag_configure('oddrow', background=ROW_COLOR_LIGHT, foreground='black')
+        self.tree.tag_configure('evenrow', background=ROW_COLOR_DARK, foreground='black')
+        self.tree.tag_configure('neg_text', foreground='red')
+        self.tree.tag_configure('zero_text', foreground='#b8860b')
+        self.tree.tag_configure('pos_text', foreground='green')
+
+    def refresh(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        if not self.controller.db.conn: return
+
+        data = self.controller.db.get_annual_summary_data()
+        running_carryover = 0.0
+        overcontribution_years = [] # List to track problem years
+
+        for i, row in enumerate(data):
+            year = row['year']
+            new_room = row['new_room']
+            deposits = row['deposits']
+            withdrawals = row['withdrawals']
+
+            total_start_room = new_room + running_carryover
+            remaining_room = total_start_room - deposits
+            running_carryover = remaining_room + withdrawals
+
+            # Check for overcontribution
+            if remaining_room < 0:
+                overcontribution_years.append(year)
+
+            bg_tag = 'evenrow' if i % 2 == 0 else 'oddrow'
+
+            # Text color tag (only visually relevant for the last column calculation)
+            status_tag = 'neg_text' if remaining_room < 0 else ('zero_text' if remaining_room == 0 else 'pos_text')
+
+            self.tree.insert('', tk.END, values=(
+                year,
+                f"${new_room:,.2f}",
+                f"${total_start_room:,.2f}",
+                f"${deposits:,.2f}",
+                f"${withdrawals:,.2f}",
+                f"${remaining_room:,.2f}"
+            ), tags=(bg_tag, status_tag))
+
+        # Update the Status Label Line
+        if overcontribution_years:
+            years_str = ", ".join(overcontribution_years)
+            self.status_label.config(
+                text=f"⚠️ You have overcontribution in year: {years_str}",
+                fg="red"
+            )
+        else:
+            self.status_label.config(
+                text="✅ You have no overcontribution in any of the years.",
+                fg="green"
+            )

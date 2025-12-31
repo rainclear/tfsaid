@@ -140,3 +140,47 @@ class DatabaseManager:
         cursor = self.conn.cursor()
         cursor.execute(sql)
         return cursor.fetchall()
+
+    def get_annual_summary_data(self):
+        """Fetches annual limits and transaction totals grouped by year."""
+        if not self.conn:
+            return []
+
+        cursor = self.conn.cursor()
+
+        # 1. Get New Room limits from NewRoomPerYear
+        cursor.execute("SELECT strftime('%Y', YearFirstDay), NewRoom FROM NewRoomPerYear")
+        room_limits = {row[0]: row[1] for row in cursor.fetchall()}
+
+        # 2. Get Transaction totals from Transactions
+        cursor.execute("""
+            SELECT strftime('%Y', TransDate) as year,
+                   SUM(CASE WHEN TransType = 'Deposit' THEN Amount ELSE 0 END) as deposits,
+                   SUM(CASE WHEN TransType = 'Withdrawal' THEN Amount ELSE 0 END) as withdrawals
+            FROM Transactions
+            GROUP BY year
+        """)
+        trans_totals = {row[0]: (row[1], row[2]) for row in cursor.fetchall()}
+
+        # 3. Determine the full range of years present in the database
+        all_keys = list(room_limits.keys()) + list(trans_totals.keys())
+        if not all_keys:
+            return []
+
+        years_int = [int(y) for y in all_keys]
+        min_year = min(years_int)
+        max_year = max(years_int)
+
+        results = []
+        for y_int in range(min_year, max_year + 1):
+            y_str = str(y_int)
+            new_room = room_limits.get(y_str, 0.0)
+            dep, wd = trans_totals.get(y_str, (0.0, 0.0))
+
+            results.append({
+                'year': y_str,
+                'new_room': new_room,
+                'deposits': dep,
+                'withdrawals': wd
+            })
+        return results

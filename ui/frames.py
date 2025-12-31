@@ -1,7 +1,50 @@
 # ui/frames.py
+import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox
 from .styles import ROW_COLOR_LIGHT, ROW_COLOR_DARK # Import your colors
+
+class WelcomeFrame(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg='white')
+        self.controller = controller
+        self._setup_ui()
+
+    def _setup_ui(self):
+        """Creates a friendly welcome screen with instructions."""
+        # Main container for centering content
+        container = tk.Frame(self, bg='white')
+        container.place(relx=0.5, rely=0.4, anchor='center')
+
+        # Welcome Title
+        title_label = tk.Label(
+            container,
+            text="Welcome to TFSAid",
+            font=('Arial', 24, 'bold'),
+            bg='white',
+            fg='#333333'
+        )
+        title_label.pack(pady=(0, 10))
+
+        # Instructions
+        instr_text = (
+            "To get started, please use the 'File' menu either to:\n\n"
+            "1. Open an existing database file (.db) or\n"
+            "2. Create a new database file.                 "
+        )
+        instr_label = tk.Label(
+            container,
+            text=instr_text,
+            font=('Arial', 12),
+            bg='white',
+            fg='#666666',
+            justify='center'
+        )
+        instr_label.pack(pady=10)
+
+        # Decorative separator
+        line = tk.Frame(container, height=2, width=300, bg='#D1EAF0')
+        line.pack(pady=20)
 
 class AccountsListFrame(tk.Frame):
     def __init__(self, parent, controller):
@@ -220,30 +263,38 @@ class NewAccountFrame(tk.Frame):
         self.text_notes.delete("1.0", tk.END)
 
     def save(self):
-        """Collects data and passes it to the Controller."""
-        # 1. Collect data from View widgets
+        # 1. Collect data from fields using the correct attribute names
+        account_name = self.entry_account_name.get().strip()
+        cra_name = self.entry_account_name_cra.get().strip()
+
+        # 2. Validation Logic
+        if not account_name:
+            messagebox.showwarning("Validation Error", "The 'Account Name (Internal)' field cannot be empty.")
+            self.entry_account_name.focus_set()
+            return
+
+        if not cra_name:
+            messagebox.showwarning("Validation Error", "The 'Account Name (CRA)' field cannot be empty.")
+            self.entry_account_name_cra.focus_set()
+            return
+
+        # 3. Prepare data tuple for the database
+        # (Internal Name, CRA Name, Type, Institution, Acc Number, Opening, Closing, Notes)
         data = (
-            self.entry_account_name.get().strip(),
-            self.entry_account_name_cra.get().strip(),
-            self.entry_account_type.get().strip(),
+            account_name,
+            cra_name,
+            self.entry_account_type.get().strip(), # Corrected from combo_type
             self.entry_institution.get().strip(),
-            self.entry_account_number.get().strip(),
+            self.entry_account_number.get().strip(), # Corrected from entry_acc_number
             self.entry_opening_date.get().strip(),
-            self.entry_close_date.get().strip(),
+            self.entry_close_date.get().strip(), # Corrected from entry_closing_date
             self.text_notes.get("1.0", tk.END).strip()
         )
 
-        # 2. Basic Validation: Internal name is required
-        if not data[0]:
-            messagebox.showwarning("Validation Error", "Account Name (Internal) is required.")
-            return
-
-        # 3. Hand off to Controller
+        # 4. Save through controller
         if self.edit_id:
-            # Tell controller to update
             self.controller.handle_update_account(self.edit_id, data)
         else:
-            # Tell controller to save new
             self.controller.handle_save_account(data)
 
 class TransactionsListFrame(tk.Frame):
@@ -452,176 +503,60 @@ class NewTransactionFrame(tk.Frame):
         self.text_trans_notes.delete("1.0", tk.END)
 
     def save(self):
+        # 1. Validate Account Selection
         acc_name = self.combo_account.get()
         if not acc_name:
             messagebox.showwarning("Input Error", "Please select an account.")
+            self.combo_account.focus_set()
             return
 
+        # 2. Date Validation (Format: YYYY-MM-DD)
+        date_str = self.entry_trans_date.get().strip()
+        try:
+            datetime.datetime.strptime(date_str, '%Y-%m-%d')
+        except ValueError:
+            messagebox.showwarning("Input Error", "Date must be in YYYY-MM-DD format (e.g., 2025-01-01).")
+            self.entry_trans_date.focus_set()
+            return
+
+        # 3. Amount Validation
+        amount_str = self.entry_amount.get().strip()
+        if not amount_str:
+            messagebox.showwarning("Input Error", "Amount cannot be empty.")
+            self.entry_amount.focus_set()
+            return
+
+        try:
+            amount_val = float(amount_str)
+
+            # Rule: Cannot be 0 or negative
+            if amount_val <= 0:
+                messagebox.showwarning("Input Error", "Amount must be a positive number greater than zero.")
+                self.entry_amount.focus_set()
+                return
+
+            # Rule: At most two decimal digits
+            if '.' in amount_str:
+                decimals = amount_str.split('.')[-1]
+                if len(decimals) > 2:
+                    messagebox.showwarning("Input Error", "Amount can have at most two decimal digits (e.g., 100.50).")
+                    self.entry_amount.focus_set()
+                    return
+
+        except ValueError:
+            messagebox.showwarning("Input Error", "Amount must be a valid number.")
+            self.entry_amount.focus_set()
+            return
+
+        # 4. Proceed to Save if all checks pass
         self.controller.handle_save_transaction(
             self.edit_id,
             self.account_map[acc_name],
-            self.entry_trans_date.get(),
+            date_str,
             self.trans_type_var.get(),
-            float(self.entry_amount.get() or 0),
+            amount_val,
             self.text_trans_notes.get("1.0", tk.END).strip()
         )
-
-class WelcomeFrame(tk.Frame):
-    def __init__(self, parent, controller):
-        super().__init__(parent, bg='white')
-        self.controller = controller
-        self._setup_ui()
-
-    def _setup_ui(self):
-        """Creates a friendly welcome screen with instructions."""
-        # Main container for centering content
-        container = tk.Frame(self, bg='white')
-        container.place(relx=0.5, rely=0.4, anchor='center')
-
-        # Welcome Title
-        title_label = tk.Label(
-            container,
-            text="Welcome to TFSAid",
-            font=('Arial', 24, 'bold'),
-            bg='white',
-            fg='#333333'
-        )
-        title_label.pack(pady=(0, 10))
-
-        # Instructions
-        instr_text = (
-            "To get started, please use the 'File' menu either to:\n\n"
-            "1. Open an existing database file (.db) or\n"
-            "2. Create a new database file.                 "
-        )
-        instr_label = tk.Label(
-            container,
-            text=instr_text,
-            font=('Arial', 12),
-            bg='white',
-            fg='#666666',
-            justify='center'
-        )
-        instr_label.pack(pady=10)
-
-        # Decorative separator
-        line = tk.Frame(container, height=2, width=300, bg='#D1EAF0')
-        line.pack(pady=20)
-
-class CRAReportFrame(tk.Frame):
-    def __init__(self, parent, controller):
-        super().__init__(parent, bg='white')
-        self.controller = controller
-        self._setup_ui()
-
-    def _setup_ui(self):
-        container = tk.Frame(self, bg='white', padx=20, pady=20)
-        container.pack(fill="both", expand=True)
-
-        tk.Label(container, text="TFSA Report (CRA Format)",
-                 font=('Arial', 18, 'bold'), bg='white').pack(pady=(0, 10))
-
-        # UPDATED: Removed Notes, Added Net Change to header/columns
-        # We use 'Net Change' as the 5th column header
-        self.columns = ("Account Name in CRA", "Date", "Deposit", "Withdrawal", "Net Change")
-        self.tree = ttk.Treeview(container, columns=self.columns, show='headings', height=25)
-
-        column_configs = {
-            "Account Name in CRA": 250,
-            "Date": 120,
-            "Deposit": 150,
-            "Withdrawal": 150,
-            "Net Change": 150
-        }
-
-        for col, width in column_configs.items():
-            self.tree.heading(col, text=col)
-            # Center the financial numbers
-            anchor = 'center' if col in ["Deposit", "Withdrawal", "Net Change"] else 'w'
-            self.tree.column(col, width=width, anchor=anchor)
-
-        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scrollbar.set)
-
-        self.tree.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        # Visual style for summary rows
-        self.tree.tag_configure('summary', background='#e8f4f8', font=('Arial', 10, 'bold'))
-        self.tree.tag_configure('grand_total', background='#d1e7dd', font=('Arial', 11, 'bold'))
-
-    def refresh(self):
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-
-        if not self.controller.db.conn:
-            return
-
-        data = self.controller.db.get_cra_report_data()
-        if not data:
-            return
-
-        current_account = None
-        acc_dep_total = 0.0
-        acc_wd_total = 0.0
-
-        grand_dep = 0.0
-        grand_wd = 0.0
-
-        for row in data:
-            cra_name, date, t_type, amount, notes = row
-
-            # Grouping logic: Detect when account name changes
-            if current_account is not None and cra_name != current_account:
-                self._insert_summary(current_account, acc_dep_total, acc_wd_total)
-                acc_dep_total = 0.0
-                acc_wd_total = 0.0
-
-            current_account = cra_name
-
-            dep_str = ""
-            wd_str = ""
-
-            if t_type == "Deposit":
-                dep_str = f"{amount:.2f}"
-                acc_dep_total += amount
-                grand_dep += amount
-            else:
-                wd_str = f"{amount:.2f}"
-                acc_wd_total += amount
-                grand_wd += amount
-
-            self.tree.insert('', tk.END, values=(cra_name, date, dep_str, wd_str, ""))
-
-        # Final account summary
-        if current_account:
-            self._insert_summary(current_account, acc_dep_total, acc_wd_total)
-
-        # Grand Total for the entire report
-        net_grand = grand_dep - grand_wd
-        self.tree.insert('', tk.END, values=("", "", "", "", ""), tags=()) # Spacer
-        self.tree.insert('', tk.END, values=(
-            "REPORT TOTALS",
-            "All Accounts",
-            f"{grand_dep:.2f}",
-            f"{grand_wd:.2f}",
-            f"{net_grand:.2f}"
-        ), tags=('grand_total',))
-
-    def _insert_summary(self, name, dep_total, wd_total):
-        net_change = dep_total - wd_total
-
-        # Insert Summary Row
-        self.tree.insert('', tk.END, values=(
-            f"TOTALS: {name}",
-            "",
-            f"{dep_total:.2f}",
-            f"{wd_total:.2f}",
-            f"{net_change:.2f}"
-        ), tags=('summary',))
-
-        # Empty row for visual spacing between account groups
-        self.tree.insert('', tk.END, values=("", "", "", "", ""))
 
 class RoomYearsListFrame(tk.Frame):
     def __init__(self, parent, controller):
@@ -755,3 +690,118 @@ class NewRoomYearFrame(tk.Frame):
             messagebox.showerror("Error", "Amount must be a valid number.")
         except Exception as e:
             messagebox.showerror("Error", f"Could not save: {e}")
+
+class CRAReportFrame(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg='white')
+        self.controller = controller
+        self._setup_ui()
+
+    def _setup_ui(self):
+        container = tk.Frame(self, bg='white', padx=20, pady=20)
+        container.pack(fill="both", expand=True)
+
+        tk.Label(container, text="TFSA Report (CRA Format)",
+                 font=('Arial', 18, 'bold'), bg='white').pack(pady=(0, 10))
+
+        # UPDATED: Removed Notes, Added Net Change to header/columns
+        # We use 'Net Change' as the 5th column header
+        self.columns = ("Account Name in CRA", "Date", "Deposit", "Withdrawal", "Net Change")
+        self.tree = ttk.Treeview(container, columns=self.columns, show='headings', height=25)
+
+        column_configs = {
+            "Account Name in CRA": 250,
+            "Date": 120,
+            "Deposit": 150,
+            "Withdrawal": 150,
+            "Net Change": 150
+        }
+
+        for col, width in column_configs.items():
+            self.tree.heading(col, text=col)
+            # Center the financial numbers
+            anchor = 'center' if col in ["Deposit", "Withdrawal", "Net Change"] else 'w'
+            self.tree.column(col, width=width, anchor=anchor)
+
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+
+        self.tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Visual style for summary rows
+        self.tree.tag_configure('summary', background='#e8f4f8', font=('Arial', 10, 'bold'))
+        self.tree.tag_configure('grand_total', background='#d1e7dd', font=('Arial', 11, 'bold'))
+
+    def refresh(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        if not self.controller.db.conn:
+            return
+
+        data = self.controller.db.get_cra_report_data()
+        if not data:
+            return
+
+        current_account = None
+        acc_dep_total = 0.0
+        acc_wd_total = 0.0
+
+        grand_dep = 0.0
+        grand_wd = 0.0
+
+        for row in data:
+            cra_name, date, t_type, amount, notes = row
+
+            # Grouping logic: Detect when account name changes
+            if current_account is not None and cra_name != current_account:
+                self._insert_summary(current_account, acc_dep_total, acc_wd_total)
+                acc_dep_total = 0.0
+                acc_wd_total = 0.0
+
+            current_account = cra_name
+
+            dep_str = ""
+            wd_str = ""
+
+            if t_type == "Deposit":
+                dep_str = f"{amount:.2f}"
+                acc_dep_total += amount
+                grand_dep += amount
+            else:
+                wd_str = f"{amount:.2f}"
+                acc_wd_total += amount
+                grand_wd += amount
+
+            self.tree.insert('', tk.END, values=(cra_name, date, dep_str, wd_str, ""))
+
+        # Final account summary
+        if current_account:
+            self._insert_summary(current_account, acc_dep_total, acc_wd_total)
+
+        # Grand Total for the entire report
+        net_grand = grand_dep - grand_wd
+        self.tree.insert('', tk.END, values=("", "", "", "", ""), tags=()) # Spacer
+        self.tree.insert('', tk.END, values=(
+            "REPORT TOTALS",
+            "All Accounts",
+            f"{grand_dep:.2f}",
+            f"{grand_wd:.2f}",
+            f"{net_grand:.2f}"
+        ), tags=('grand_total',))
+
+    def _insert_summary(self, name, dep_total, wd_total):
+        net_change = dep_total - wd_total
+
+        # Insert Summary Row
+        self.tree.insert('', tk.END, values=(
+            f"TOTALS: {name}",
+            "",
+            f"{dep_total:.2f}",
+            f"{wd_total:.2f}",
+            f"{net_change:.2f}"
+        ), tags=('summary',))
+
+        # Empty row for visual spacing between account groups
+        self.tree.insert('', tk.END, values=("", "", "", "", ""))

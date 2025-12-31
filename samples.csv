@@ -1,0 +1,11 @@
+CRA Account;Date;Deposit;Withdrawal;Net Change
+huahua;2025-03-20;;3000.03;
+huahua;2025-09-05;300.00;;
+TOTAL: huahua;;300.00;3000.03;-2700.03
+
+kuakua;2025-02-10;;250.00;
+TOTAL: kuakua;;0.00;250.00;-250.00
+
+when;2024-03-24;;200.10;
+when;2025-01-25;500.00;;
+TOTAL: when;;500.00;200.10;299.90

@@ -33,9 +33,10 @@ class MainWindowLayout:
         nav_items = [
             ("Accounts", "AccountsListFrame"),
             ("Transactions", "TransactionsListFrame"),
+            ("Room by Year", "RoomYearsListFrame"),
             ("New Account", "NewAccountFrame"),
             ("New Transaction", "NewTransactionFrame"),
-            ("New Room/Year", "NewRoomYearForm"),
+            ("New Room/Year", "NewRoomYearFrame"),
             ("Report (CRA Format)", "CRAReportFrame")
         ]
 

@@ -10,45 +10,56 @@ class AccountsListFrame(tk.Frame):
         self._setup_ui()
 
     def _setup_ui(self):
-        """Creates the Treeview widget for displaying account data."""
+        """Creates the Treeview widget with a header title for accounts."""
+        # Main container for the list and title
+        container = tk.Frame(self, bg='white', padx=20, pady=20)
+        container.pack(fill="both", expand=True)
+
+        # ADDED: Section Title
+        tk.Label(
+            container,
+            text="Accounts",
+            font=('Arial', 18, 'bold'),
+            bg='white',
+            fg='#333333'
+        ).pack(pady=(0, 15))
+
         self.columns = ("ID", "Account Name", "Account Name in CRA", "Type", "Institution", "Account Number", "Opening Date", "Actions")
-        self.tree = ttk.Treeview(self, columns=self.columns, show='headings')
+        self.tree = ttk.Treeview(container, columns=self.columns, show='headings', height=20)
 
         # Column configuration
         column_configs = {
-            "ID": (0, 'center'), # We will hide this
+            "ID": (0, 'center'), # Hidden
             "Account Name": (150, 'w'),
             "Account Name in CRA": (150, 'w'),
             "Type": (100, 'center'),
             "Institution": (120, 'w'),
             "Account Number": (100, 'w'),
             "Opening Date": (100, 'center'),
-            "Actions": (80, 'center') # Action column
+            "Actions": (80, 'center')
         }
 
         for col, (width, anchor) in column_configs.items():
             self.tree.heading(col, text=col)
             self.tree.column(col, width=width, anchor=anchor)
 
-        # Hide the ID column (it's for internal use only)
+        # Hide the ID column
         self.tree.column("ID", width=0, stretch=tk.NO)
 
-        # Bind the click event to detect "Delete" clicks
-        self.tree.bind("<Button-1>", self._on_click)
-        
         # Scrollbar
-        vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=vsb.set)
-        
-        # Configure Tags for alternating colors
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+
+        # Layout
+        self.tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Row styling for alternating colors
         self.tree.tag_configure('oddrow', background=ROW_COLOR_LIGHT)
         self.tree.tag_configure('evenrow', background=ROW_COLOR_DARK)
 
-        # Layout
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
-        self.tree.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
-        vsb.grid(row=0, column=1, sticky='ns', pady=10)
+        # Interaction
+        self.tree.bind("<Button-1>", self._on_click)
 
     def _on_click(self, event):
         region = self.tree.identify_region(event.x, event.y)
@@ -144,7 +155,7 @@ class NewAccountFrame(tk.Frame):
         container.grid_columnconfigure(1, weight=1)
 
         ttk.Label(container, text="Create New Account",
-                  font=('Arial', 18, 'bold')).grid(row=0, column=0, columnspan=2, pady=(10, 25), sticky="w")
+                  font=('Arial', 18, 'bold')).grid(row=0, column=0, columnspan=2, pady=(10, 25))
 
         # Define fields to build them programmatically or manually
         # 1. Internal Name
@@ -242,38 +253,56 @@ class TransactionsListFrame(tk.Frame):
         self._setup_ui()
 
     def _setup_ui(self):
-        # Added 'ID' at start and 'Actions' at the end
-        self.columns = ("ID", "Account", "Date", "Deposit", "Withdrawal", "Notes", "Actions")
-        self.tree = ttk.Treeview(self, columns=self.columns, show='headings')
+        """Creates the Treeview for transactions with a header title."""
+        # Main container for the list and title
+        container = tk.Frame(self, bg='white', padx=20, pady=20)
+        container.pack(fill="both", expand=True)
 
+        # ADDED: Section Title
+        tk.Label(
+            container,
+            text="Transactions by Date",
+            font=('Arial', 18, 'bold'),
+            bg='white',
+            fg='#333333'
+        ).pack(pady=(0, 15))
+
+        # Define columns (ID is hidden)
+        self.columns = ("ID", "Account", "Date", "Deposit", "Withdrawal", "Notes", "Actions")
+        self.tree = ttk.Treeview(container, columns=self.columns, show='headings', height=20)
+
+        # Column configuration
         column_configs = {
-            "ID": (0, 'center'),         # Will be hidden
+            "ID": (0, 'center'),
             "Account": (150, 'w'),
             "Date": (100, 'center'),
             "Deposit": (100, 'e'),
             "Withdrawal": (100, 'e'),
-            "Notes": (200, 'w'),
-            "Actions": (80, 'center')    # New Actions column
+            "Notes": (250, 'w'),
+            "Actions": (100, 'center')
         }
 
         for col, (width, anchor) in column_configs.items():
             self.tree.heading(col, text=col)
             self.tree.column(col, width=width, anchor=anchor)
 
-        # Hide ID column
+        # Hide the ID column
         self.tree.column("ID", width=0, stretch=tk.NO)
-        # Bind click event for the Delete action
-        self.tree.bind("<Button-1>", self._on_click)
 
-        vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=vsb.set)
+        # Scrollbar
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+
+        # Layout within the container
+        self.tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Row styling for alternating colors
         self.tree.tag_configure('oddrow', background=ROW_COLOR_LIGHT)
         self.tree.tag_configure('evenrow', background=ROW_COLOR_DARK)
 
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
-        self.tree.grid(row=0, column=0, sticky='nsew', padx=10, pady=10)
-        vsb.grid(row=0, column=1, sticky='ns', pady=10)
+        # Interaction
+        self.tree.bind("<Button-1>", self._on_click)
 
     def _on_click(self, event):
         """Identifies if Edit or Delete was clicked based on cell horizontal position."""
@@ -594,4 +623,135 @@ class CRAReportFrame(tk.Frame):
         # Empty row for visual spacing between account groups
         self.tree.insert('', tk.END, values=("", "", "", "", ""))
 
-# ... You would add RoomYearsListFrame, etc., similarly ...
+class RoomYearsListFrame(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg='white')
+        self.controller = controller
+        self._setup_ui()
+
+    def _setup_ui(self):
+        container = tk.Frame(self, bg='white', padx=20, pady=20)
+        container.pack(fill="both", expand=True)
+
+        tk.Label(container, text="TFSA Annual Limits",
+                 font=('Arial', 18, 'bold'), bg='white').pack(pady=(0, 10))
+
+        # Define Columns (ID is hidden but used for deletion)
+        self.columns = ("ID", "Year", "New Room", "Actions")
+        self.tree = ttk.Treeview(container, columns=self.columns, show='headings', height=15)
+
+        column_configs = {
+            "ID": (0, 'center'),
+            "Year": (150, 'center'),
+            "New Room": (150, 'center'),
+            "Actions": (100, 'center')
+        }
+
+        for col, (width, anchor) in column_configs.items():
+            self.tree.heading(col, text=col)
+            self.tree.column(col, width=width, anchor=anchor)
+
+        self.tree.column("ID", width=0, stretch=tk.NO) # Hide ID
+
+        # Scrollbar
+        vsb = ttk.Scrollbar(container, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=vsb.set)
+
+        self.tree.pack(side="left", fill="both", expand=True)
+        vsb.pack(side="right", fill="y")
+
+        # Alternating Row Colors
+        self.tree.tag_configure('oddrow', background=ROW_COLOR_LIGHT)
+        self.tree.tag_configure('evenrow', background=ROW_COLOR_DARK)
+
+        # Click event for Delete
+        self.tree.bind("<Button-1>", self._on_click)
+
+    def _on_click(self, event):
+        region = self.tree.identify_region(event.x, event.y)
+        if region == "cell":
+            column = self.tree.identify_column(event.x)
+            item_id = self.tree.identify_row(event.y)
+            values = self.tree.item(item_id, 'values')
+
+            if not values: return
+
+            # If clicking the 'Actions' column (index 4 is logically #4)
+            if self.tree.heading(column, "text") == "Actions":
+                room_id = values[0]
+                year = values[1]
+                self.controller.confirm_delete_room_year(room_id, year)
+
+    def refresh(self):
+        """Fetches data and strips the full date to just the year for display."""
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        if self.controller.db.conn:
+            data = self.controller.db.get_room_years()
+            for i, row in enumerate(data):
+                # row[0]: id, row[1]: "YYYY-MM-DD", row[2]: Amount
+                full_date = row[1]
+                display_year = full_date.split('-')[0] # Extracts "2025" from "2025-01-01"
+
+                tag = 'evenrow' if i % 2 == 0 else 'oddrow'
+
+                self.tree.insert('', tk.END, values=(
+                    row[0],
+                    display_year,
+                    f"${row[2]:,.2f}",
+                    "Delete"
+                ), tags=(tag,))
+
+class NewRoomYearFrame(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg='white')
+        self.controller = controller
+        self._setup_ui()
+
+    def _setup_ui(self):
+        container = tk.Frame(self, bg='white', padx=40, pady=40)
+        container.place(relx=0.5, rely=0.4, anchor='center')
+
+        tk.Label(container, text="Add Annual TFSA Limit",
+                 font=('Arial', 18, 'bold'), bg='white').grid(row=0, column=0, columnspan=2, pady=(0, 20))
+
+        # Year Input
+        tk.Label(container, text="Year (YYYY):", bg='white').grid(row=1, column=0, sticky="e", pady=5)
+        self.entry_year = tk.Entry(container, width=20)
+        self.entry_year.grid(row=1, column=1, padx=10, pady=5)
+
+        # Amount Input
+        tk.Label(container, text="New Room Amount ($):", bg='white').grid(row=2, column=0, sticky="e", pady=5)
+        self.entry_amount = tk.Entry(container, width=20)
+        self.entry_amount.grid(row=2, column=1, padx=10, pady=5)
+
+        # Save Button
+        save_btn = ttk.Button(container, text="Save Annual Limit", command=self.save)
+        save_btn.grid(row=3, column=0, columnspan=2, pady=20)
+
+    def save(self):
+        year = self.entry_year.get().strip()
+        amount = self.entry_amount.get().strip()
+
+        if not year or not amount:
+            messagebox.showwarning("Input Error", "Both fields are required.")
+            return
+
+        try:
+            # Prepare date as first day of the year for DB consistency
+            db_date = f"{year}-01-01"
+            amount_val = float(amount)
+
+            self.controller.db.save_room_year(db_date, amount_val)
+            messagebox.showinfo("Success", f"Room for {year} saved.")
+
+            # Clear and redirect
+            self.entry_year.delete(0, tk.END)
+            self.entry_amount.delete(0, tk.END)
+            self.controller.show_frame("RoomYearsListFrame") # Ensure redirect target is correct
+
+        except ValueError:
+            messagebox.showerror("Error", "Amount must be a valid number.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not save: {e}")

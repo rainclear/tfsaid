@@ -120,9 +120,16 @@ class DatabaseManager:
         self.conn.commit()
 
     def get_room_years(self):
+        """Fetches all room per year entries sorted by year."""
         cursor = self.conn.cursor()
-        cursor.execute("SELECT YearFirstDay, NewRoom FROM NewRoomPerYear ORDER BY YearFirstDay")
+        cursor.execute("SELECT id, YearFirstDay, NewRoom FROM NewRoomPerYear ORDER BY YearFirstDay DESC")
         return cursor.fetchall()
+
+    def delete_room_year(self, room_id):
+        """Deletes a specific year room entry."""
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM NewRoomPerYear WHERE id = ?", (room_id,))
+        self.conn.commit()
 
     def get_cra_report_data(self):
         """Fetches transactions ordered for the CRA report."""
@@ -133,4 +140,3 @@ class DatabaseManager:
         cursor = self.conn.cursor()
         cursor.execute(sql)
         return cursor.fetchall()
- 

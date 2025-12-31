@@ -28,9 +28,14 @@ class TFSAid(tk.Tk):
 
         # 4. Initialize Frames
         # a. Register the Frames
-        from ui.frames import WelcomeFrame, AccountsListFrame, TransactionsListFrame, NewAccountFrame, NewTransactionFrame, CRAReportFrame # etc.
+        from ui.frames import (WelcomeFrame, AccountsListFrame, TransactionsListFrame,
+                              RoomYearsListFrame, NewAccountFrame, NewTransactionFrame,
+                              NewRoomYearFrame, CRAReportFrame) # Ensure this matches
         self.frames = {}
-        frame_list = (WelcomeFrame, AccountsListFrame, TransactionsListFrame, NewAccountFrame, NewTransactionFrame, CRAReportFrame)
+        frame_list = (WelcomeFrame, AccountsListFrame, TransactionsListFrame,
+                      RoomYearsListFrame, NewAccountFrame, NewTransactionFrame,
+                      NewRoomYearFrame, CRAReportFrame)
+
         # Add all your frame classes to this tuple
         for F in frame_list:
             page_name = F.__name__
@@ -287,6 +292,14 @@ class TFSAid(tk.Tk):
             messagebox.showinfo("Export Successful", f"Report saved successfully using semicolon separators.")
         except Exception as e:
             messagebox.showerror("Export Error", f"Failed to export CSV: {e}")
+
+    def confirm_delete_room_year(self, room_id, year):
+        if messagebox.askyesno("Confirm Delete", f"Delete the contribution limit for {year}?"):
+            try:
+                self.db.delete_room_year(room_id)
+                self.frames["RoomYearsListFrame"].refresh()
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to delete: {e}")
 
 if __name__ == "__main__":
     app = TFSAid()

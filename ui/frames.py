@@ -479,4 +479,119 @@ class WelcomeFrame(tk.Frame):
         line = tk.Frame(container, height=2, width=300, bg='#D1EAF0')
         line.pack(pady=20)
 
-# ... You would add NewAccountFrame, RoomYearsListFrame, etc., similarly ...
+class CRAReportFrame(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg='white')
+        self.controller = controller
+        self._setup_ui()
+
+    def _setup_ui(self):
+        container = tk.Frame(self, bg='white', padx=20, pady=20)
+        container.pack(fill="both", expand=True)
+
+        tk.Label(container, text="TFSA Report (CRA Format)",
+                 font=('Arial', 18, 'bold'), bg='white').pack(pady=(0, 10))
+
+        # UPDATED: Removed Notes, Added Net Change to header/columns
+        # We use 'Net Change' as the 5th column header
+        self.columns = ("Account Name in CRA", "Date", "Deposit", "Withdrawal", "Net Change")
+        self.tree = ttk.Treeview(container, columns=self.columns, show='headings', height=25)
+
+        column_configs = {
+            "Account Name in CRA": 250,
+            "Date": 120,
+            "Deposit": 150,
+            "Withdrawal": 150,
+            "Net Change": 150
+        }
+
+        for col, width in column_configs.items():
+            self.tree.heading(col, text=col)
+            # Center the financial numbers
+            anchor = 'center' if col in ["Deposit", "Withdrawal", "Net Change"] else 'w'
+            self.tree.column(col, width=width, anchor=anchor)
+
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+
+        self.tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Visual style for summary rows
+        self.tree.tag_configure('summary', background='#e8f4f8', font=('Arial', 10, 'bold'))
+        self.tree.tag_configure('grand_total', background='#d1e7dd', font=('Arial', 11, 'bold'))
+
+    def refresh(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        if not self.controller.db.conn:
+            return
+
+        data = self.controller.db.get_cra_report_data()
+        if not data:
+            return
+
+        current_account = None
+        acc_dep_total = 0.0
+        acc_wd_total = 0.0
+
+        grand_dep = 0.0
+        grand_wd = 0.0
+
+        for row in data:
+            cra_name, date, t_type, amount, notes = row
+
+            # Grouping logic: Detect when account name changes
+            if current_account is not None and cra_name != current_account:
+                self._insert_summary(current_account, acc_dep_total, acc_wd_total)
+                acc_dep_total = 0.0
+                acc_wd_total = 0.0
+
+            current_account = cra_name
+
+            dep_str = ""
+            wd_str = ""
+
+            if t_type == "Deposit":
+                dep_str = f"{amount:.2f}"
+                acc_dep_total += amount
+                grand_dep += amount
+            else:
+                wd_str = f"{amount:.2f}"
+                acc_wd_total += amount
+                grand_wd += amount
+
+            self.tree.insert('', tk.END, values=(cra_name, date, dep_str, wd_str, ""))
+
+        # Final account summary
+        if current_account:
+            self._insert_summary(current_account, acc_dep_total, acc_wd_total)
+
+        # Grand Total for the entire report
+        net_grand = grand_dep - grand_wd
+        self.tree.insert('', tk.END, values=("", "", "", "", ""), tags=()) # Spacer
+        self.tree.insert('', tk.END, values=(
+            "REPORT TOTALS",
+            "All Accounts",
+            f"{grand_dep:.2f}",
+            f"{grand_wd:.2f}",
+            f"{net_grand:.2f}"
+        ), tags=('grand_total',))
+
+    def _insert_summary(self, name, dep_total, wd_total):
+        net_change = dep_total - wd_total
+
+        # Insert Summary Row
+        self.tree.insert('', tk.END, values=(
+            f"TOTALS: {name}",
+            "",
+            f"{dep_total:.2f}",
+            f"{wd_total:.2f}",
+            f"{net_change:.2f}"
+        ), tags=('summary',))
+
+        # Empty row for visual spacing between account groups
+        self.tree.insert('', tk.END, values=("", "", "", "", ""))
+
+# ... You would add RoomYearsListFrame, etc., similarly ...

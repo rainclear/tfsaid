@@ -123,3 +123,14 @@ class DatabaseManager:
         cursor = self.conn.cursor()
         cursor.execute("SELECT YearFirstDay, NewRoom FROM NewRoomPerYear ORDER BY YearFirstDay")
         return cursor.fetchall()
+
+    def get_cra_report_data(self):
+        """Fetches transactions ordered for the CRA report."""
+        sql = """SELECT A.AccountNameCRA, T.TransDate, T.TransType, T.Amount, T.Notes
+                FROM Transactions T
+                JOIN Accounts A ON T.Account_id = A.id
+                ORDER BY A.AccountNameCRA ASC, T.TransDate ASC"""
+        cursor = self.conn.cursor()
+        cursor.execute(sql)
+        return cursor.fetchall()
+ 

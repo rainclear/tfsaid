@@ -1,5 +1,6 @@
 # main.py
 import os
+import csv
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from dbm.database_manager import DatabaseManager
@@ -27,9 +28,9 @@ class TFSAid(tk.Tk):
 
         # 4. Initialize Frames
         # a. Register the Frames
-        from ui.frames import WelcomeFrame, AccountsListFrame, TransactionsListFrame, NewAccountFrame, NewTransactionFrame # etc.
+        from ui.frames import WelcomeFrame, AccountsListFrame, TransactionsListFrame, NewAccountFrame, NewTransactionFrame, CRAReportFrame # etc.
         self.frames = {}
-        frame_list = (WelcomeFrame, AccountsListFrame, TransactionsListFrame, NewAccountFrame, NewTransactionFrame)
+        frame_list = (WelcomeFrame, AccountsListFrame, TransactionsListFrame, NewAccountFrame, NewTransactionFrame, CRAReportFrame)
         # Add all your frame classes to this tuple
         for F in frame_list:
             page_name = F.__name__
@@ -214,6 +215,78 @@ class TFSAid(tk.Tk):
             self.show_frame("TransactionsListFrame")
         except Exception as e:
             messagebox.showerror("Error", f"Save failed: {e}")
+
+    def export_cra_report_csv(self):
+        if not self.db.conn:
+            messagebox.showwarning("Warning", "Please open a database first.")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV Files", "*.csv")],
+            title="Export CRA Report (Semicolon Delimited)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            data = self.db.get_cra_report_data()
+            with open(file_path, mode='w', newline='', encoding='utf-8') as f:
+                # UPDATED: delimiter is now ';'
+                # AccountNameCRA will still be wrapped in double quotes for safety
+                writer = csv.writer(f, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+                # Write Header
+                writer.writerow(["CRA Account", "Date", "Deposit", "Withdrawal", "Net Change"])
+
+                current_account = None
+                acc_dep = 0.0
+                acc_wd = 0.0
+
+                for row in data:
+                    cra_name, date, t_type, amount, notes = row
+
+                    # Group Summary Logic
+                    if current_account is not None and cra_name != current_account:
+                        writer.writerow([
+                            f"TOTAL: {current_account}",
+                            "",
+                            f"{acc_dep:.2f}",
+                            f"{acc_wd:.2f}",
+                            f"{(acc_dep - acc_wd):.2f}"
+                        ])
+                        writer.writerow([]) # Spacer row
+                        acc_dep, acc_wd = 0.0, 0.0
+
+                    current_account = cra_name
+                    dep = amount if t_type == "Deposit" else 0.0
+                    wd = amount if t_type == "Withdrawal" else 0.0
+                    acc_dep += dep
+                    acc_wd += wd
+
+                    # Write individual transaction row
+                    writer.writerow([
+                        cra_name,
+                        date,
+                        f"{dep:.2f}" if dep else "",
+                        f"{wd:.2f}" if wd else "",
+                        ""
+                    ])
+
+                # Final Account Summary (last group in the loop)
+                if current_account:
+                    writer.writerow([
+                        f"TOTAL: {current_account}",
+                        "",
+                        f"{acc_dep:.2f}",
+                        f"{acc_wd:.2f}",
+                        f"{(acc_dep - acc_wd):.2f}"
+                    ])
+
+            messagebox.showinfo("Export Successful", f"Report saved successfully using semicolon separators.")
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to export CSV: {e}")
 
 if __name__ == "__main__":
     app = TFSAid()

@@ -35,7 +35,8 @@ class MainWindowLayout:
             ("Transactions", "TransactionsListFrame"),
             ("New Account", "NewAccountFrame"),
             ("New Transaction", "NewTransactionFrame"),
-            ("New Room/Year", "NewRoomYearForm")
+            ("New Room/Year", "NewRoomYearForm"),
+            ("Report (CRA Format)", "CRAReportFrame")
         ]
 
         for text, frame_name in nav_items:

@@ -13,19 +13,12 @@ class AppMenuBar(tk.Menu):
         file_menu.add_command(label="Open Database", command=self.controller.open_database)
         file_menu.add_separator()
         file_menu.add_command(label="Close DB", command=self.controller.close_database)
+        # Inside the File Menu setup:
+        file_menu.add_separator()
+        file_menu.add_command(label="Export to CSV file...", command=self.controller.export_cra_report_csv)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.controller.quit)
         self.add_cascade(label="File", menu=file_menu)
-
-        # --- Edit Menu ---
-        edit_menu = tk.Menu(self, tearoff=0)
-        edit_menu.add_command(label="Undo", command=self._placeholder)
-        edit_menu.add_command(label="Redo", command=self._placeholder)
-        edit_menu.add_separator()
-        edit_menu.add_command(label="Cut", command=self._placeholder)
-        edit_menu.add_command(label="Copy", command=self._placeholder)
-        edit_menu.add_command(label="Paste", command=self._placeholder)
-        self.add_cascade(label="Edit", menu=edit_menu)
 
         # --- Help Menu ---
         help_menu = tk.Menu(self, tearoff=0)
